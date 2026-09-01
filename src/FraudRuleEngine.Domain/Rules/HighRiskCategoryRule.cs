@@ -6,7 +6,7 @@ namespace FraudRuleEngine.Domain.Rules;
 /// <summary>
 /// Flags a transaction whose category sits on the elevated risk watchlist.
 /// </summary>
-public sealed class HighRiskCategoryRule
+public sealed class HighRiskCategoryRule : IFraudRule
 {
     private readonly FrozenSet<TransactionCategory> _highRiskCategories = new[]
     {
@@ -15,15 +15,24 @@ public sealed class HighRiskCategoryRule
         TransactionCategory.InternationalTransfer,
     }.ToFrozenSet();
 
-    public string? Evaluate(TransactionEvent transaction)
+    /// <inheritdoc />
+    public RuleId Id { get; } = RuleId.From("HighRiskCategory");
+
+    /// <inheritdoc />
+    public RuleOutcome Evaluate(TransactionEvent transaction)
     {
         ArgumentNullException.ThrowIfNull(transaction);
 
         if (!_highRiskCategories.Contains(transaction.Category))
         {
-            return null;
+            return RuleOutcome.Clear(
+                Id,
+                $"Category {transaction.Category} is not on the elevated risk watchlist.");
         }
 
-        return $"Category {transaction.Category} is on the elevated risk watchlist.";
+        return RuleOutcome.Triggered(
+            Id,
+            RuleSeverity.Low,
+            $"Category {transaction.Category} is on the elevated risk watchlist.");
     }
 }

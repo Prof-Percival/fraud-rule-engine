@@ -15,20 +15,24 @@ public sealed class HighValueTransactionRuleTests
             .WithAmount(48_500m, Currency.Zar)
             .Build();
 
-        _rule.Evaluate(transaction).ShouldNotBeNull();
+        var outcome = _rule.Evaluate(transaction);
+
+        outcome.IsTriggered.ShouldBeTrue();
+        outcome.Severity.ShouldBe(RuleSeverity.High);
+        outcome.RuleId.ShouldBe(_rule.Id);
     }
 
     [Fact]
     public void Flags_an_amount_exactly_at_the_threshold()
     {
-        // The boundary, stated explicitly. "At or above" has to mean something definite, because
-        // a threshold that excludes its own value is really a different threshold and the analyst
-        // tuning it would have no way of knowing.
+        // The boundary, stated explicitly. "At or above" has to mean something definite, because a
+        // threshold that excludes its own value is really a different threshold and the analyst tuning
+        // it would have no way of knowing.
         var transaction = TransactionEventBuilder.AValidEvent()
             .WithAmount(25_000m, Currency.Zar)
             .Build();
 
-        _rule.Evaluate(transaction).ShouldNotBeNull();
+        _rule.Evaluate(transaction).IsTriggered.ShouldBeTrue();
     }
 
     [Fact]
@@ -38,7 +42,7 @@ public sealed class HighValueTransactionRuleTests
             .WithAmount(24_999.99m, Currency.Zar)
             .Build();
 
-        _rule.Evaluate(transaction).ShouldBeNull();
+        _rule.Evaluate(transaction).IsTriggered.ShouldBeFalse();
     }
 
     [Fact]
@@ -48,7 +52,10 @@ public sealed class HighValueTransactionRuleTests
             .WithAmount(250m, Currency.Zar)
             .Build();
 
-        _rule.Evaluate(transaction).ShouldBeNull();
+        var outcome = _rule.Evaluate(transaction);
+
+        outcome.IsTriggered.ShouldBeFalse();
+        outcome.Severity.ShouldBe(RuleSeverity.None);
     }
 
     [Theory]
@@ -66,26 +73,26 @@ public sealed class HighValueTransactionRuleTests
             .WithAmount(threshold - 1, currency)
             .Build();
 
-        _rule.Evaluate(atThreshold).ShouldNotBeNull();
-        _rule.Evaluate(justUnder).ShouldBeNull();
+        _rule.Evaluate(atThreshold).IsTriggered.ShouldBeTrue();
+        _rule.Evaluate(justUnder).IsTriggered.ShouldBeFalse();
     }
 
     [Fact]
     public void Uses_the_threshold_for_the_currency_rather_than_comparing_bare_numbers()
     {
         // The case that justifies holding thresholds per currency. Two thousand dollars is over the
-        // dollar threshold of 1,500 and far below the rand figure of 25,000. A rule that compared
-        // the raw number against one threshold would miss this altogether, which is a fraudulent
+        // dollar threshold of 1,500 and far below the rand figure of 25,000. A rule that compared the
+        // raw number against one threshold would miss this altogether, which is a fraudulent
         // transaction going through rather than a false positive.
         var dollars = TransactionEventBuilder.AValidEvent()
             .WithAmount(2_000m, Currency.Usd)
             .Build();
 
-        var reason = _rule.Evaluate(dollars);
+        var outcome = _rule.Evaluate(dollars);
 
-        reason.ShouldNotBeNull();
-        reason.ShouldContain("USD");
-        reason.ShouldNotContain("ZAR");
+        outcome.IsTriggered.ShouldBeTrue();
+        outcome.Reason.ShouldContain("USD");
+        outcome.Reason.ShouldNotContain("ZAR");
     }
 
     [Fact]
@@ -95,12 +102,23 @@ public sealed class HighValueTransactionRuleTests
             .WithAmount(48_500m, Currency.Zar)
             .Build();
 
-        var reason = _rule.Evaluate(transaction);
+        var reason = _rule.Evaluate(transaction).Reason;
 
-        reason.ShouldNotBeNull();
         reason.ShouldContain("48500");
         reason.ShouldContain("25000");
         reason.ShouldContain("ZAR");
+    }
+
+    [Fact]
+    public void Explains_why_it_did_not_fire()
+    {
+        // Clear outcomes carry a reason too, because a stored assessment has to be reviewable when
+        // the transaction turns out to have been fraud that nothing caught.
+        var transaction = TransactionEventBuilder.AValidEvent()
+            .WithAmount(250m, Currency.Zar)
+            .Build();
+
+        _rule.Evaluate(transaction).Reason.ShouldContain("below");
     }
 
     [Fact]

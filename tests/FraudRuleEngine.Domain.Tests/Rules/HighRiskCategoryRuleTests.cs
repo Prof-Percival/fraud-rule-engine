@@ -18,7 +18,19 @@ public sealed class HighRiskCategoryRuleTests
             .WithCategory(category)
             .Build();
 
-        _rule.Evaluate(transaction).ShouldNotBeNull();
+        _rule.Evaluate(transaction).IsTriggered.ShouldBeTrue();
+    }
+
+    [Fact]
+    public void Reports_a_watchlist_hit_as_weak_signal()
+    {
+        // Low rather than High, and deliberately so. Gambling is common legitimate behaviour, so this
+        // rule should not on its own push a transaction towards a decline.
+        var transaction = TransactionEventBuilder.AValidEvent()
+            .WithCategory(TransactionCategory.Gambling)
+            .Build();
+
+        _rule.Evaluate(transaction).Severity.ShouldBe(RuleSeverity.Low);
     }
 
     [Theory]
@@ -38,27 +50,27 @@ public sealed class HighRiskCategoryRuleTests
             .WithCategory(category)
             .Build();
 
-        _rule.Evaluate(transaction).ShouldBeNull();
+        _rule.Evaluate(transaction).IsTriggered.ShouldBeFalse();
     }
 
     [Fact]
     public void Does_not_flag_an_unrecognised_category()
     {
-        // Unknown means the upstream service sent a category this build has never heard of, which
-        // says nothing about the customer. If unknown were treated as risky then every upstream
-        // release that added a category would arrive as a wave of false positives.
+        // Unknown means the upstream service sent a category this build has never heard of, which says
+        // nothing about the customer. If unknown were treated as risky then every upstream release
+        // that added a category would arrive as a wave of false positives.
         var transaction = TransactionEventBuilder.AValidEvent()
             .WithCategory(TransactionCategory.Unknown)
             .Build();
 
-        _rule.Evaluate(transaction).ShouldBeNull();
+        _rule.Evaluate(transaction).IsTriggered.ShouldBeFalse();
     }
 
     [Fact]
     public void Ignores_the_amount_entirely()
     {
-        // This rule is about category and nothing else. A large grocery shop is not its business,
-        // and a small crypto purchase still is. Combining the two signals is the scoring step's job.
+        // This rule is about category and nothing else. A large grocery shop is not its business, and
+        // a small crypto purchase still is. Combining the two signals is the scoring step's job.
         var largeGroceries = TransactionEventBuilder.AValidEvent()
             .WithCategory(TransactionCategory.Groceries)
             .WithAmount(500_000m, Currency.Zar)
@@ -69,8 +81,8 @@ public sealed class HighRiskCategoryRuleTests
             .WithAmount(0.01m, Currency.Zar)
             .Build();
 
-        _rule.Evaluate(largeGroceries).ShouldBeNull();
-        _rule.Evaluate(tinyCrypto).ShouldNotBeNull();
+        _rule.Evaluate(largeGroceries).IsTriggered.ShouldBeFalse();
+        _rule.Evaluate(tinyCrypto).IsTriggered.ShouldBeTrue();
     }
 
     [Fact]
@@ -80,10 +92,7 @@ public sealed class HighRiskCategoryRuleTests
             .WithCategory(TransactionCategory.Gambling)
             .Build();
 
-        var reason = _rule.Evaluate(transaction);
-
-        reason.ShouldNotBeNull();
-        reason.ShouldContain("Gambling");
+        _rule.Evaluate(transaction).Reason.ShouldContain("Gambling");
     }
 
     [Fact]
