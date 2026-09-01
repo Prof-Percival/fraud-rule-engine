@@ -1,0 +1,39 @@
+<Project>
+
+  <!--
+    Settings that apply to every project in the solution. Individual csproj files carry
+    only what makes them different, which in practice means their project references.
+  -->
+
+  <PropertyGroup Label="Platform">
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <PropertyGroup Label="Correctness">
+    <!--
+      Warnings fail the build. A warning nobody has to deal with is a warning everybody
+      learns to scroll past, and by the time there are forty of them the one that mattered
+      is invisible. Cheaper to hold the line from the first commit than to clean up later.
+    -->
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <EnableNETAnalyzers>true</EnableNETAnalyzers>
+    <AnalysisLevel>latest-recommended</AnalysisLevel>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+  </PropertyGroup>
+
+  <PropertyGroup Label="Build reproducibility">
+    <Deterministic>true</Deterministic>
+    <ContinuousIntegrationBuild Condition="'$(CI)' == 'true'">true</ContinuousIntegrationBuild>
+  </PropertyGroup>
+
+  <!--
+    InvariantGlobalization is deliberately left off. It trims the ICU dependency and would
+    shrink the container, but the unusual hour rule has to ask what time it was for the
+    customer rather than in UTC, and that means real timezone data. Correctness of a fraud
+    rule beats a smaller image.
+  -->
+
+</Project>

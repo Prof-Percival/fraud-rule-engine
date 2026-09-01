@@ -1,0 +1,11 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Deliberately empty. No package references and no project references, which is the point
+    of this project rather than an accident of it being early. A rule cannot reach for a
+    DbContext or an HttpContext because nothing here would resolve one.
+
+    See docs/adr/0001-layered-architecture.md.
+  -->
+
+</Project>

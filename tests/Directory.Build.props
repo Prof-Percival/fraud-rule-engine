@@ -1,0 +1,46 @@
+<Project>
+
+  <!--
+    Shared configuration for the test projects. Imports the solution wide props first, then
+    adds what every test project needs, so the individual test csproj files carry nothing
+    but a reference to the project under test.
+  -->
+
+  <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))" />
+
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+    <!--
+      xunit v3 test projects are self hosting executables rather than libraries loaded by an
+      external runner, so this is required rather than optional.
+    -->
+    <OutputType>Exe</OutputType>
+  </PropertyGroup>
+
+  <ItemGroup Label="Test framework">
+    <!--
+      xunit v3 on Microsoft.Testing.Platform. v3 ships its own runner and the test project
+      builds as an executable, so the VSTest era packages are not here: no
+      Microsoft.NET.Test.Sdk, no xunit.runner.visualstudio, and no coverlet.collector.
+      The .NET 10 SDK refuses to run MTP projects through VSTest at all, so mixing the two
+      is not an option. Opted in via the test section of global.json.
+    -->
+    <PackageReference Include="xunit.v3" />
+    <PackageReference Include="Microsoft.Testing.Extensions.CodeCoverage" />
+  </ItemGroup>
+
+  <ItemGroup Label="Assertions">
+    <!--
+      Shouldly rather than FluentAssertions. FluentAssertions moved to a paid licence for
+      commercial use at version 8, and this is a commercial context.
+    -->
+    <PackageReference Include="Shouldly" />
+  </ItemGroup>
+
+  <ItemGroup Label="Global usings">
+    <Using Include="Xunit" />
+    <Using Include="Shouldly" />
+  </ItemGroup>
+
+</Project>
