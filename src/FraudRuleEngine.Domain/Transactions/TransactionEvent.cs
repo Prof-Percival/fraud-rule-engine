@@ -4,46 +4,26 @@ namespace FraudRuleEngine.Domain.Transactions;
 /// A single categorised transaction, as received from upstream, ready to be assessed for fraud.
 /// </summary>
 /// <remarks>
-/// This is the input to the whole engine and it is immutable. An event describes something that has
-/// already happened, so there is nothing to mutate: a correction is a new event, not an edit to
-/// this one. That matters for auditability, since an assessment has to remain explainable in terms
-/// of exactly what was assessed.
+/// Immutable, because an event describes something that already happened and a correction is a new event
+/// rather than an edit. Invariants are enforced here as well as at the API boundary, which is not
+/// duplication: that layer turns bad input into a useful response, this one guarantees nothing
+/// downstream has to wonder whether the amount might be negative.
 ///
 /// <para>
-/// Invariants are enforced in the constructor rather than left to the caller, because this type is
-/// built from data supplied by another service. Validation living at the API boundary as well is
-/// not duplication: that layer turns bad input into a useful problem response, and this layer
-/// guarantees that nothing downstream has to wonder whether the amount might be negative.
-/// </para>
-///
-/// <para>
-/// Reversals and credits are out of scope. The amount is required to be positive, which means this
-/// type models spend. A refund would be a distinct event type with its own rules, since the fraud
-/// signals for money leaving an account and money returning to it are not the same.
+/// The amount must be positive, so this models spend. A refund would be a separate event type, since the
+/// fraud signals for money leaving an account and money returning to it are not the same.
 /// </para>
 /// </remarks>
 public sealed record TransactionEvent
 {
-    /// <summary>Creates a transaction event.</summary>
     /// <param name="eventId">
-    /// The producer's identifier for this event, used as the idempotency key. Distinct from
-    /// <paramref name="transactionId"/>, because the same transaction can legitimately be delivered
-    /// more than once and each delivery carries the same event identifier.
+    /// The idempotency key. Distinct from <paramref name="transactionId"/>, because the same transaction
+    /// can legitimately be delivered more than once and each delivery carries the same event identifier.
     /// </param>
-    /// <param name="transactionId">The identifier of the underlying transaction.</param>
-    /// <param name="customerId">The customer the transaction belongs to.</param>
-    /// <param name="accountId">The account the transaction was made against.</param>
-    /// <param name="amount">The transaction amount. Must be positive.</param>
-    /// <param name="category">The category assigned upstream.</param>
-    /// <param name="channel">How the transaction was initiated.</param>
-    /// <param name="merchant">The merchant involved.</param>
-    /// <param name="country">Where the transaction took place.</param>
     /// <param name="occurredAt">
-    /// When the transaction took place, as reported by the producer. This is the transaction's own
-    /// time and not the time this service saw it, which is the distinction that makes velocity and
-    /// impossible travel rules meaningful.
+    /// The transaction's own time, not when this service saw it. That distinction is what makes velocity
+    /// and impossible travel meaningful.
     /// </param>
-    /// <exception cref="ArgumentNullException"><paramref name="merchant"/> is null.</exception>
     /// <exception cref="ArgumentException">An identifier was not constructed through its factory.</exception>
     /// <exception cref="ArgumentOutOfRangeException">
     /// The amount is not positive, or <paramref name="occurredAt"/> is not set.
@@ -93,46 +73,44 @@ public sealed record TransactionEvent
         Channel = channel;
         Merchant = merchant;
         Country = country;
-        OccurredAt = occurredAt.ToUniversalTime();
+        OccurredAt = occurredAt;
     }
 
-    /// <summary>The producer's identifier for this event, and the idempotency key on ingestion.</summary>
     public EventId EventId { get; }
 
-    /// <summary>The identifier of the underlying transaction.</summary>
     public TransactionId TransactionId { get; }
 
-    /// <summary>The customer the transaction belongs to.</summary>
     public CustomerId CustomerId { get; }
 
-    /// <summary>The account the transaction was made against.</summary>
     public AccountId AccountId { get; }
 
-    /// <summary>The transaction amount, always positive.</summary>
+    /// <summary>Always positive.</summary>
     public Money Amount { get; }
 
-    /// <summary>The category assigned by the upstream service.</summary>
     public TransactionCategory Category { get; }
 
-    /// <summary>How the transaction was initiated.</summary>
     public TransactionChannel Channel { get; }
 
-    /// <summary>The merchant involved.</summary>
     public Merchant Merchant { get; }
 
-    /// <summary>Where the transaction took place.</summary>
     public CountryCode Country { get; }
 
     /// <summary>
-    /// When the transaction occurred, normalised to UTC.
+    /// The offset is kept, not folded into UTC, because it is the only record of what the wall clock read
+    /// where the transaction happened and a rule asking about three in the morning needs it. Keeping it
+    /// costs nothing, since <see cref="DateTimeOffset"/> compares and subtracts on the instant.
     /// </summary>
     /// <remarks>
-    /// Stored in UTC so that comparisons across events are unambiguous, which velocity and
-    /// impossible travel both depend on. Rules that need to know what the local time was for the
-    /// customer, the unusual hour rule being the one, convert from here using the customer's
-    /// timezone rather than relying on whatever offset the producer happened to send.
+    /// This trusts the producer's offset. One that sends everything as UTC leaves local time
+    /// unrecoverable. The better question is whether the hour was unusual for that customer rather than
+    /// for the shop, which needs their own timezone from a profile.
     /// </remarks>
     public DateTimeOffset OccurredAt { get; }
+
+    public DateTimeOffset OccurredAtUtc => OccurredAt.ToUniversalTime();
+
+    /// <summary>Wall clock time where the transaction took place, from the reported offset.</summary>
+    public TimeOnly LocalTimeOfDay => TimeOnly.FromTimeSpan(OccurredAt.TimeOfDay);
 
     private static void EnsureInitialised(bool isInitialised, string parameterName)
     {

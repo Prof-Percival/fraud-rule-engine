@@ -28,19 +28,38 @@ public sealed class TransactionEventTests
     }
 
     [Fact]
-    public void Normalises_the_time_it_occurred_to_utc()
+    public void Keeps_the_offset_the_producer_reported()
     {
-        // Producers send whatever offset they are running in. Velocity and impossible travel both
-        // compare times across events, so they have to be on one clock before any rule sees them.
+        // The offset is the only record of what the wall clock read where the transaction happened,
+        // so it is kept rather than folded into UTC. UTC is still available for comparison.
         var johannesburgLocal = new DateTimeOffset(2026, 9, 1, 14, 30, 0, TimeSpan.FromHours(2));
 
         var transaction = TransactionEventBuilder.AValidEvent()
             .OccurringAt(johannesburgLocal)
             .Build();
 
-        transaction.OccurredAt.Offset.ShouldBe(TimeSpan.Zero);
-        transaction.OccurredAt.Hour.ShouldBe(12);
-        transaction.OccurredAt.ShouldBe(johannesburgLocal);
+        transaction.OccurredAt.Offset.ShouldBe(TimeSpan.FromHours(2));
+        transaction.OccurredAt.Hour.ShouldBe(14);
+        transaction.OccurredAtUtc.Hour.ShouldBe(12);
+        transaction.LocalTimeOfDay.ShouldBe(new TimeOnly(14, 30));
+    }
+
+    [Fact]
+    public void Orders_and_subtracts_correctly_across_different_offsets()
+    {
+        // Why keeping the offset costs nothing elsewhere. These two are thirty minutes apart as
+        // instants despite the wall clocks reading two hours apart, and DateTimeOffset knows that
+        // without any normalisation on our part.
+        var johannesburg = TransactionEventBuilder.AValidEvent()
+            .OccurringAt(new DateTimeOffset(2026, 9, 1, 14, 0, 0, TimeSpan.FromHours(2)))
+            .Build();
+
+        var london = TransactionEventBuilder.AValidEvent()
+            .OccurringAt(new DateTimeOffset(2026, 9, 1, 12, 30, 0, TimeSpan.FromHours(0)))
+            .Build();
+
+        (london.OccurredAt - johannesburg.OccurredAt).ShouldBe(TimeSpan.FromMinutes(30));
+        (london.OccurredAt > johannesburg.OccurredAt).ShouldBeTrue();
     }
 
     [Fact]
