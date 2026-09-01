@@ -206,37 +206,90 @@ brew install postgresql@17
 brew services start postgresql@17
 ```
 
-If you would rather not install it at all, a hosted PostgreSQL instance works equally well.
-Anything reachable on a connection string is fine, and nothing in the service depends on
-where the database runs.
-
-**3. Create the database**
+Linux, using Debian or Ubuntu as the example:
 
 ```bash
-createdb fraudengine
+sudo apt install postgresql-17
+sudo systemctl enable --now postgresql
 ```
 
-On Windows, `createdb.exe` lives under `C:\Program Files\PostgreSQL\17\bin`, or use pgAdmin,
-which the installer includes.
+The Windows installer asks you to set a password for the built in `postgres` superuser during
+setup. Make a note of it, because step 3 needs it and there is no way to recover it later
+short of editing `pg_hba.conf`.
 
-**4. Point the service at it**
+If you would rather not install anything, a hosted PostgreSQL instance works just as well.
+Nothing in the service cares where the database runs, only that a connection string reaches
+it.
+
+**3. Create a role and a database for the service**
+
+The default superuser differs by platform, so getting into `psql` differs too. Pick your line:
+
+| Platform | Open psql as an administrator |
+|---|---|
+| Windows | `psql -U postgres` then enter the password from step 2 |
+| macOS via Homebrew | `psql postgres` |
+| Linux | `sudo -u postgres psql` |
+
+Homebrew is the one that catches people out. It does not create a `postgres` role at all. It
+creates a superuser named after your macOS account and trusts local connections, so there is
+no password to supply and `psql -U postgres` fails with "role postgres does not exist".
+
+On Windows, `psql.exe` is not on `PATH` by default. It lives in
+`C:\Program Files\PostgreSQL\17\bin`, so either add that to `PATH` or use the SQL Shell
+shortcut the installer creates. pgAdmin, also installed, will run the same statements if you
+prefer a window to a prompt.
+
+Once you have a prompt, create a dedicated role and a database it owns:
+
+```sql
+CREATE ROLE fraudengine WITH LOGIN PASSWORD 'fraudengine';
+CREATE DATABASE fraudengine OWNER fraudengine;
+\q
+```
+
+These are throwaway local development credentials and they are in the README on purpose, so
+the connection string below works without you having to invent anything. Do not reuse them
+anywhere that matters.
+
+The `OWNER` clause matters and is not decoration. From PostgreSQL 15 onwards, an ordinary role
+cannot create objects in the `public` schema of a database it does not own, so migrations fail
+with "permission denied for schema public". Making the role the owner avoids that.
+
+**4. Check you can actually connect**
+
+Worth thirty seconds here rather than debugging it through the application later:
+
+```bash
+psql "postgresql://fraudengine:fraudengine@localhost:5432/fraudengine" -c "select version();"
+```
+
+That prints the server version if the role, password, database and port are all correct, and
+tells you which of them is wrong if not. See the troubleshooting table below for what the
+common failures mean.
+
+**5. Point the service at it**
 
 Set the connection string as an environment variable. The double underscore is how .NET maps
-an environment variable onto a nested configuration key.
+an environment variable onto a nested configuration key, in this case
+`ConnectionStrings:Default`.
 
 PowerShell:
 
 ```powershell
-$env:ConnectionStrings__Default = "Host=localhost;Port=5432;Database=fraudengine;Username=postgres;Password=yourpassword"
+$env:ConnectionStrings__Default = "Host=localhost;Port=5432;Database=fraudengine;Username=fraudengine;Password=fraudengine"
 ```
 
 bash or zsh:
 
 ```bash
-export ConnectionStrings__Default="Host=localhost;Port=5432;Database=fraudengine;Username=postgres;Password=yourpassword"
+export ConnectionStrings__Default="Host=localhost;Port=5432;Database=fraudengine;Username=fraudengine;Password=fraudengine"
 ```
 
-**5. Apply the schema**
+Note that this only lasts for the current terminal session. A new terminal needs it again, or
+put it in your shell profile.
+
+**6. Apply the schema**
 
 ```bash
 dotnet tool restore
@@ -245,7 +298,7 @@ dotnet ef database update \
   --startup-project src/FraudRuleEngine.Api
 ```
 
-**6. Run it**
+**7. Run it**
 
 ```bash
 dotnet restore
@@ -255,7 +308,22 @@ dotnet run --project src/FraudRuleEngine.Api
 
 The API comes up on <http://localhost:8080>. Confirm with
 `curl http://localhost:8080/health/ready`, which reports unhealthy if it cannot reach the
-database, so it also verifies steps 2 through 4.
+database, so it verifies the whole chain above rather than just that the process started.
+
+**When PostgreSQL will not cooperate**
+
+| What you see | What it means |
+|---|---|
+| `connection refused` | The server is not running, or not on 5432. `brew services list`, `systemctl status postgresql`, or Services on Windows |
+| `password authentication failed for user "fraudengine"` | The role exists but the password differs from step 3. Reset it with `ALTER ROLE fraudengine WITH PASSWORD 'fraudengine';` |
+| `role "fraudengine" does not exist` | Step 3 did not run, or it ran against a different server than the one you are now connecting to |
+| `role "postgres" does not exist` | You are on Homebrew. Use `psql postgres`, which connects as your macOS account |
+| `database "fraudengine" does not exist` | The `CREATE DATABASE` line did not run. The `\q` at the end of the block is easy to paste too early |
+| `permission denied for schema public` during migrations | The role does not own the database. `ALTER DATABASE fraudengine OWNER TO fraudengine;` |
+| `54320` or `5433` in use instead of 5432 | Another PostgreSQL is already installed. Either point the connection string at the other port or stop the one you are not using |
+
+On macOS, `brew services list` tells you whether the server is up. On Windows it is a Windows
+service called `postgresql-x64-17` and shows up in `services.msc`.
 
 **Testing without Docker**
 
@@ -274,8 +342,21 @@ no Docker:
 dotnet test
 ```
 
-Note that the integration tests create and drop schemas, so point them at a scratch database
-rather than one holding anything you care about.
+The integration tests create and drop schemas, so give them their own database rather than the
+one the application uses. From a `psql` prompt opened as in step 3:
+
+```sql
+CREATE DATABASE fraudengine_tests OWNER fraudengine;
+```
+
+Then point the tests at it for the duration of the run:
+
+```bash
+ConnectionStrings__Default="Host=localhost;Port=5432;Database=fraudengine_tests;Username=fraudengine;Password=fraudengine" dotnet test
+```
+
+Setting it inline like that rather than exporting it avoids the mistake of leaving the variable
+pointing at the test database and then wondering where the application's data went.
 
 ## Testing
 
