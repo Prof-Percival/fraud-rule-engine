@@ -1,10 +1,21 @@
-using FraudRuleEngine.Domain.Transactions;
-
 namespace FraudRuleEngine.Domain.Rules;
 
 /// <summary>
-/// Flags a transaction that took place during the small hours, local to where it happened.
+/// Flags a transaction in the small hours, local to where it happened. Compromised cards get used while
+/// the cardholder is asleep and unlikely to see a notification.
 /// </summary>
+/// <remarks>
+/// The window is applied to local time, not UTC, and that distinction is the rule. Three in the morning
+/// in Johannesburg is one in the morning UTC; in Los Angeles it is eleven the previous morning. A UTC
+/// window would flag ordinary afternoon spending in one timezone and miss genuine overnight activity in
+/// another.
+///
+/// <para>
+/// Reports <see cref="RuleSeverity.Low"/> for two reasons. It uses the local time where the transaction
+/// happened rather than where the customer lives, so somebody shopping abroad is judged on that hour,
+/// and the window is fixed rather than learned, so anyone working nights trips it regularly.
+/// </para>
+/// </remarks>
 public sealed class UnusualHourRule : IFraudRule
 {
     /// <summary>Inclusive. One through five avoids the evening, when plenty of people shop online.</summary>
@@ -13,18 +24,14 @@ public sealed class UnusualHourRule : IFraudRule
     /// <summary>Exclusive, so 05:00 belongs to the ordinary day.</summary>
     private readonly TimeOnly _windowEnd = new(5, 0);
 
-    /// <inheritdoc />
     public RuleId Id { get; } = RuleId.From("UnusualHour");
 
-    /// <inheritdoc />
-    public RuleOutcome Evaluate(TransactionEvent transaction)
+    public RuleOutcome Evaluate(FraudEvaluationContext context)
     {
-        ArgumentNullException.ThrowIfNull(transaction);
+        ArgumentNullException.ThrowIfNull(context);
 
-        var localTime = transaction.LocalTimeOfDay;
+        var localTime = context.Transaction.LocalTimeOfDay;
 
-        // Inclusive at the start, exclusive at the end. 05:00 exactly is not in the window, so the
-        // boundary belongs to the ordinary part of the day rather than being ambiguous.
         if (localTime < _windowStart || localTime >= _windowEnd)
         {
             return RuleOutcome.Clear(

@@ -6,6 +6,11 @@ namespace FraudRuleEngine.Domain.Rules;
 /// <summary>
 /// Flags a transaction with a merchant on the deny list.
 /// </summary>
+/// <remarks>
+/// Not a probabilistic judgment like the other rules. A merchant is on the list because somebody put it
+/// there, usually after confirmed fraud, so a hit is a policy violation and reports
+/// <see cref="RuleSeverity.High"/> regardless of amount or category.
+/// </remarks>
 public sealed class DeniedMerchantRule : IFraudRule
 {
     private readonly FrozenSet<MerchantId> _deniedMerchants = new[]
@@ -15,14 +20,17 @@ public sealed class DeniedMerchantRule : IFraudRule
         MerchantId.From("MERCH-DENY-0003"),
     }.ToFrozenSet();
 
-    /// <inheritdoc />
     public RuleId Id { get; } = RuleId.From("DeniedMerchant");
 
-    /// <inheritdoc />
-    public RuleOutcome Evaluate(TransactionEvent transaction)
+    public RuleOutcome Evaluate(FraudEvaluationContext context)
     {
-        ArgumentNullException.ThrowIfNull(transaction);
+        ArgumentNullException.ThrowIfNull(context);
 
+        var transaction = context.Transaction;
+
+        // Matching is on the identifier and never the name. A name is free text the acquirer controls
+        // and it varies in spelling between transactions, so denying by it would be easy to evade and
+        // would also catch unrelated merchants sharing one.
         if (!_deniedMerchants.Contains(transaction.Merchant.Id))
         {
             return RuleOutcome.Clear(
@@ -30,8 +38,6 @@ public sealed class DeniedMerchantRule : IFraudRule
                 $"Merchant {transaction.Merchant.Id} is not on the deny list.");
         }
 
-        // The name goes in the reason even though matching ignores it, because the person picking this
-        // up wants to know which shop it was without going and looking the identifier up.
         return RuleOutcome.Triggered(
             Id,
             RuleSeverity.High,

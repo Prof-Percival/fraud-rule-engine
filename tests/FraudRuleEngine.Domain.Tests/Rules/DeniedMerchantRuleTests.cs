@@ -18,7 +18,7 @@ public sealed class DeniedMerchantRuleTests
             .WithMerchant(new Merchant(MerchantId.From(merchantId), "Some Trading Name"))
             .Build();
 
-        var outcome = _rule.Evaluate(transaction);
+        var outcome = _rule.Evaluate(ContextBuilder.For(transaction));
 
         outcome.IsTriggered.ShouldBeTrue();
         outcome.Severity.ShouldBe(RuleSeverity.High);
@@ -31,7 +31,7 @@ public sealed class DeniedMerchantRuleTests
             .WithMerchant(new Merchant(MerchantId.From("MERCH-0001"), "Checkers Hyper Constantia"))
             .Build();
 
-        _rule.Evaluate(transaction).IsTriggered.ShouldBeFalse();
+        _rule.Evaluate(ContextBuilder.For(transaction)).IsTriggered.ShouldBeFalse();
     }
 
     [Fact]
@@ -48,8 +48,8 @@ public sealed class DeniedMerchantRuleTests
             .WithMerchant(new Merchant(MerchantId.From("MERCH-9999"), "MERCH-DENY-0001"))
             .Build();
 
-        _rule.Evaluate(deniedIdWithInnocentName).IsTriggered.ShouldBeTrue();
-        _rule.Evaluate(innocentIdWithDeniedLookingName).IsTriggered.ShouldBeFalse();
+        _rule.Evaluate(ContextBuilder.For(deniedIdWithInnocentName)).IsTriggered.ShouldBeTrue();
+        _rule.Evaluate(ContextBuilder.For(innocentIdWithDeniedLookingName)).IsTriggered.ShouldBeFalse();
     }
 
     [Fact]
@@ -63,7 +63,7 @@ public sealed class DeniedMerchantRuleTests
             .WithCategory(TransactionCategory.Groceries)
             .Build();
 
-        _rule.Evaluate(trivialAndOrdinary).IsTriggered.ShouldBeTrue();
+        _rule.Evaluate(ContextBuilder.For(trivialAndOrdinary)).IsTriggered.ShouldBeTrue();
     }
 
     [Fact]
@@ -73,7 +73,7 @@ public sealed class DeniedMerchantRuleTests
             .WithMerchant(new Merchant(MerchantId.From("MERCH-DENY-0001"), "Dodgy Electronics"))
             .Build();
 
-        var reason = _rule.Evaluate(transaction).Reason;
+        var reason = _rule.Evaluate(ContextBuilder.For(transaction)).Reason;
 
         reason.ShouldContain("MERCH-DENY-0001");
         reason.ShouldContain("Dodgy Electronics");
@@ -88,7 +88,7 @@ public sealed class DeniedMerchantRuleTests
             .WithMerchant(new Merchant(MerchantId.From("merch-deny-0001"), "Dodgy Electronics"))
             .Build();
 
-        _rule.Evaluate(transaction).IsTriggered.ShouldBeFalse();
+        _rule.Evaluate(ContextBuilder.For(transaction)).IsTriggered.ShouldBeFalse();
     }
 
     [Fact]

@@ -6,7 +6,8 @@ namespace FraudRuleEngine.Domain.Tests.Rules;
 
 public sealed class FraudRuleEvaluatorTests
 {
-    private readonly TransactionEvent _transaction = TransactionEventBuilder.AValidEvent().Build();
+    private readonly FraudEvaluationContext _context =
+        ContextBuilder.For(TransactionEventBuilder.AValidEvent().Build());
 
     [Fact]
     public void Returns_one_outcome_per_rule_even_when_none_fire()
@@ -18,7 +19,7 @@ public sealed class FraudRuleEvaluatorTests
             StubRule.ThatClears("Third"),
         ]);
 
-        var outcomes = evaluator.Evaluate(_transaction);
+        var outcomes = evaluator.Evaluate(_context);
 
         outcomes.Count.ShouldBe(3);
         outcomes.ShouldAllBe(outcome => !outcome.IsTriggered);
@@ -36,7 +37,7 @@ public sealed class FraudRuleEvaluatorTests
             StubRule.ThatClears("Charlie"),
         ]);
 
-        var outcomes = evaluator.Evaluate(_transaction);
+        var outcomes = evaluator.Evaluate(_context);
 
         outcomes.Select(outcome => outcome.RuleId.Value)
             .ShouldBe(["Alpha", "Bravo", "Charlie"]);
@@ -53,7 +54,7 @@ public sealed class FraudRuleEvaluatorTests
             StubRule.ThatTriggers("Second"),
         ]);
 
-        evaluator.Evaluate(_transaction).ShouldAllBe(outcome => outcome.IsTriggered);
+        evaluator.Evaluate(_context).ShouldAllBe(outcome => outcome.IsTriggered);
     }
 
     [Fact]
@@ -101,7 +102,7 @@ public sealed class FraudRuleEvaluatorTests
         // error somebody has to deal with.
         var evaluator = new FraudRuleEvaluator([StubRule.ThatClears("Fine"), new ThrowingRule()]);
 
-        Should.Throw<InvalidOperationException>(() => evaluator.Evaluate(_transaction));
+        Should.Throw<InvalidOperationException>(() => evaluator.Evaluate(_context));
     }
 
     [Fact]
@@ -132,7 +133,7 @@ public sealed class FraudRuleEvaluatorTests
 
         public static StubRule ThatClears(string id) => new(id, triggers: false);
 
-        public RuleOutcome Evaluate(TransactionEvent transaction) => _triggers
+        public RuleOutcome Evaluate(FraudEvaluationContext context) => _triggers
             ? RuleOutcome.Triggered(Id, RuleSeverity.Medium, "Stub triggered.")
             : RuleOutcome.Clear(Id, "Stub did not trigger.");
     }
@@ -141,7 +142,7 @@ public sealed class FraudRuleEvaluatorTests
     {
         public RuleId Id => default;
 
-        public RuleOutcome Evaluate(TransactionEvent transaction) =>
+        public RuleOutcome Evaluate(FraudEvaluationContext context) =>
             throw new NotSupportedException("Never reached, the evaluator rejects this rule at construction.");
     }
 
@@ -149,7 +150,7 @@ public sealed class FraudRuleEvaluatorTests
     {
         public RuleId Id { get; } = RuleId.From("Throwing");
 
-        public RuleOutcome Evaluate(TransactionEvent transaction) =>
+        public RuleOutcome Evaluate(FraudEvaluationContext context) =>
             throw new InvalidOperationException("Reference data unavailable.");
     }
 }

@@ -16,7 +16,7 @@ public sealed class UnusualHourRuleTests
     [InlineData(4, 59)]
     public void Flags_a_transaction_inside_the_window(int hour, int minute)
     {
-        var outcome = _rule.Evaluate(AtLocalTime(hour, minute));
+        var outcome = _rule.Evaluate(ContextBuilder.For(AtLocalTime(hour, minute)));
 
         outcome.IsTriggered.ShouldBeTrue();
         outcome.Severity.ShouldBe(RuleSeverity.Low);
@@ -31,7 +31,7 @@ public sealed class UnusualHourRuleTests
     [InlineData(23, 59)]
     public void Does_not_flag_a_transaction_outside_the_window(int hour, int minute)
     {
-        _rule.Evaluate(AtLocalTime(hour, minute)).IsTriggered.ShouldBeFalse();
+        _rule.Evaluate(ContextBuilder.For(AtLocalTime(hour, minute))).IsTriggered.ShouldBeFalse();
     }
 
     [Fact]
@@ -39,8 +39,8 @@ public sealed class UnusualHourRuleTests
     {
         // Both boundaries pinned down. Half open means 05:00 belongs to the ordinary day, so the
         // window cannot be read two ways.
-        _rule.Evaluate(AtLocalTime(1, 0)).IsTriggered.ShouldBeTrue();
-        _rule.Evaluate(AtLocalTime(5, 0)).IsTriggered.ShouldBeFalse();
+        _rule.Evaluate(ContextBuilder.For(AtLocalTime(1, 0))).IsTriggered.ShouldBeTrue();
+        _rule.Evaluate(ContextBuilder.For(AtLocalTime(5, 0))).IsTriggered.ShouldBeFalse();
     }
 
     [Fact]
@@ -65,11 +65,11 @@ public sealed class UnusualHourRuleTests
             .OccurringAt(new DateTimeOffset(2026, 9, 1, 2, 0, 0, TimeSpan.FromHours(12)))
             .Build();
 
-        _rule.Evaluate(johannesburgThreeAm).IsTriggered.ShouldBeTrue();
-        _rule.Evaluate(johannesburgAfternoon).IsTriggered.ShouldBeFalse();
+        _rule.Evaluate(ContextBuilder.For(johannesburgThreeAm)).IsTriggered.ShouldBeTrue();
+        _rule.Evaluate(ContextBuilder.For(johannesburgAfternoon)).IsTriggered.ShouldBeFalse();
 
         aucklandTwoAm.OccurredAtUtc.Hour.ShouldBe(14);
-        _rule.Evaluate(aucklandTwoAm).IsTriggered.ShouldBeTrue();
+        _rule.Evaluate(ContextBuilder.For(aucklandTwoAm)).IsTriggered.ShouldBeTrue();
     }
 
     [Fact]
@@ -83,13 +83,13 @@ public sealed class UnusualHourRuleTests
             .Build();
 
         hawaiiAfternoon.OccurredAtUtc.Hour.ShouldBe(1);
-        _rule.Evaluate(hawaiiAfternoon).IsTriggered.ShouldBeFalse();
+        _rule.Evaluate(ContextBuilder.For(hawaiiAfternoon)).IsTriggered.ShouldBeFalse();
     }
 
     [Fact]
     public void Quotes_the_local_time_and_the_window_in_the_reason()
     {
-        var reason = _rule.Evaluate(AtLocalTime(3, 30)).Reason;
+        var reason = _rule.Evaluate(ContextBuilder.For(AtLocalTime(3, 30))).Reason;
 
         reason.ShouldContain("03:30");
         reason.ShouldContain("01:00");

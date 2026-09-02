@@ -18,7 +18,7 @@ public sealed class HighRiskCategoryRuleTests
             .WithCategory(category)
             .Build();
 
-        _rule.Evaluate(transaction).IsTriggered.ShouldBeTrue();
+        _rule.Evaluate(ContextBuilder.For(transaction)).IsTriggered.ShouldBeTrue();
     }
 
     [Fact]
@@ -30,7 +30,7 @@ public sealed class HighRiskCategoryRuleTests
             .WithCategory(TransactionCategory.Gambling)
             .Build();
 
-        _rule.Evaluate(transaction).Severity.ShouldBe(RuleSeverity.Low);
+        _rule.Evaluate(ContextBuilder.For(transaction)).Severity.ShouldBe(RuleSeverity.Low);
     }
 
     [Theory]
@@ -50,7 +50,7 @@ public sealed class HighRiskCategoryRuleTests
             .WithCategory(category)
             .Build();
 
-        _rule.Evaluate(transaction).IsTriggered.ShouldBeFalse();
+        _rule.Evaluate(ContextBuilder.For(transaction)).IsTriggered.ShouldBeFalse();
     }
 
     [Fact]
@@ -63,7 +63,7 @@ public sealed class HighRiskCategoryRuleTests
             .WithCategory(TransactionCategory.Unknown)
             .Build();
 
-        _rule.Evaluate(transaction).IsTriggered.ShouldBeFalse();
+        _rule.Evaluate(ContextBuilder.For(transaction)).IsTriggered.ShouldBeFalse();
     }
 
     [Fact]
@@ -81,8 +81,8 @@ public sealed class HighRiskCategoryRuleTests
             .WithAmount(0.01m, Currency.Zar)
             .Build();
 
-        _rule.Evaluate(largeGroceries).IsTriggered.ShouldBeFalse();
-        _rule.Evaluate(tinyCrypto).IsTriggered.ShouldBeTrue();
+        _rule.Evaluate(ContextBuilder.For(largeGroceries)).IsTriggered.ShouldBeFalse();
+        _rule.Evaluate(ContextBuilder.For(tinyCrypto)).IsTriggered.ShouldBeTrue();
     }
 
     [Fact]
@@ -92,7 +92,7 @@ public sealed class HighRiskCategoryRuleTests
             .WithCategory(TransactionCategory.Gambling)
             .Build();
 
-        _rule.Evaluate(transaction).Reason.ShouldContain("Gambling");
+        _rule.Evaluate(ContextBuilder.For(transaction)).Reason.ShouldContain("Gambling");
     }
 
     [Fact]

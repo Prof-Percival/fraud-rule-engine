@@ -15,7 +15,7 @@ public sealed class HighValueTransactionRuleTests
             .WithAmount(48_500m, Currency.Zar)
             .Build();
 
-        var outcome = _rule.Evaluate(transaction);
+        var outcome = _rule.Evaluate(ContextBuilder.For(transaction));
 
         outcome.IsTriggered.ShouldBeTrue();
         outcome.Severity.ShouldBe(RuleSeverity.High);
@@ -32,7 +32,7 @@ public sealed class HighValueTransactionRuleTests
             .WithAmount(25_000m, Currency.Zar)
             .Build();
 
-        _rule.Evaluate(transaction).IsTriggered.ShouldBeTrue();
+        _rule.Evaluate(ContextBuilder.For(transaction)).IsTriggered.ShouldBeTrue();
     }
 
     [Fact]
@@ -42,7 +42,7 @@ public sealed class HighValueTransactionRuleTests
             .WithAmount(24_999.99m, Currency.Zar)
             .Build();
 
-        _rule.Evaluate(transaction).IsTriggered.ShouldBeFalse();
+        _rule.Evaluate(ContextBuilder.For(transaction)).IsTriggered.ShouldBeFalse();
     }
 
     [Fact]
@@ -52,7 +52,7 @@ public sealed class HighValueTransactionRuleTests
             .WithAmount(250m, Currency.Zar)
             .Build();
 
-        var outcome = _rule.Evaluate(transaction);
+        var outcome = _rule.Evaluate(ContextBuilder.For(transaction));
 
         outcome.IsTriggered.ShouldBeFalse();
         outcome.Severity.ShouldBe(RuleSeverity.None);
@@ -73,8 +73,8 @@ public sealed class HighValueTransactionRuleTests
             .WithAmount(threshold - 1, currency)
             .Build();
 
-        _rule.Evaluate(atThreshold).IsTriggered.ShouldBeTrue();
-        _rule.Evaluate(justUnder).IsTriggered.ShouldBeFalse();
+        _rule.Evaluate(ContextBuilder.For(atThreshold)).IsTriggered.ShouldBeTrue();
+        _rule.Evaluate(ContextBuilder.For(justUnder)).IsTriggered.ShouldBeFalse();
     }
 
     [Fact]
@@ -88,7 +88,7 @@ public sealed class HighValueTransactionRuleTests
             .WithAmount(2_000m, Currency.Usd)
             .Build();
 
-        var outcome = _rule.Evaluate(dollars);
+        var outcome = _rule.Evaluate(ContextBuilder.For(dollars));
 
         outcome.IsTriggered.ShouldBeTrue();
         outcome.Reason.ShouldContain("USD");
@@ -102,7 +102,7 @@ public sealed class HighValueTransactionRuleTests
             .WithAmount(48_500m, Currency.Zar)
             .Build();
 
-        var reason = _rule.Evaluate(transaction).Reason;
+        var reason = _rule.Evaluate(ContextBuilder.For(transaction)).Reason;
 
         reason.ShouldContain("48500");
         reason.ShouldContain("25000");
@@ -118,7 +118,7 @@ public sealed class HighValueTransactionRuleTests
             .WithAmount(250m, Currency.Zar)
             .Build();
 
-        _rule.Evaluate(transaction).Reason.ShouldContain("below");
+        _rule.Evaluate(ContextBuilder.For(transaction)).Reason.ShouldContain("below");
     }
 
     [Fact]
