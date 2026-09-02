@@ -60,13 +60,48 @@ public sealed class FraudEvaluationContextTests
     }
 
     [Fact]
-    public void Rejects_a_missing_transaction_or_history()
+    public void Carries_the_customer_baseline_alongside_the_recent_history()
     {
-        Should.Throw<ArgumentNullException>(
-            () => new FraudEvaluationContext(null!, CustomerHistory.Empty(TimeSpan.FromHours(1))));
+        // Two different questions over two different periods. The history holds individual
+        // transactions for velocity; the baseline is an aggregate for judging what is normal.
+        var baseline = CustomerBaseline.Over(
+            TimeSpan.FromDays(90),
+            transactionCount: 42,
+            new Money(320m, Currency.Zar),
+            [MerchantId.From("MERCH-0001")]);
+
+        var context = ContextBuilder.WithBaseline(Transaction("evt-1", "CUST-1"), baseline);
+
+        context.Baseline.TransactionCount.ShouldBe(42);
+        context.Baseline.AverageAmount.ShouldBe(new Money(320m, Currency.Zar));
+        context.Baseline.HasUsed(MerchantId.From("MERCH-0001")).ShouldBeTrue();
+    }
+
+    [Fact]
+    public void Defaults_to_no_baseline_for_a_customer_nobody_has_seen()
+    {
+        var context = FraudEvaluationContext.WithoutHistory(
+            Transaction("evt-1", "CUST-1"),
+            TimeSpan.FromHours(24));
+
+        context.Baseline.HasHistory.ShouldBeFalse();
+        context.Baseline.AverageAmount.ShouldBeNull();
+    }
+
+    [Fact]
+    public void Rejects_a_missing_transaction_history_or_baseline()
+    {
+        var history = CustomerHistory.Empty(TimeSpan.FromHours(1));
+        var transaction = Transaction("evt-1", "CUST-1");
 
         Should.Throw<ArgumentNullException>(
-            () => new FraudEvaluationContext(Transaction("evt-1", "CUST-1"), null!));
+            () => new FraudEvaluationContext(null!, history, CustomerBaseline.None));
+
+        Should.Throw<ArgumentNullException>(
+            () => new FraudEvaluationContext(transaction, null!, CustomerBaseline.None));
+
+        Should.Throw<ArgumentNullException>(
+            () => new FraudEvaluationContext(transaction, history, null!));
     }
 
     private static TransactionEvent Transaction(string eventId, string customerId) =>

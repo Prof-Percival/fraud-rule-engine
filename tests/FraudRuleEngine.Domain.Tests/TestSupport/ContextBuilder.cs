@@ -32,6 +32,16 @@ internal static class ContextBuilder
     internal static FraudEvaluationContext WithHistory(
         TransactionEvent transaction,
         IEnumerable<TransactionEvent> history,
-        TimeSpan? lookback = null) =>
-        new(transaction, new CustomerHistory(lookback ?? DefaultLookback, history));
+        TimeSpan? lookback = null,
+        CustomerBaseline? baseline = null) =>
+        new(
+            transaction,
+            new CustomerHistory(lookback ?? DefaultLookback, history),
+            baseline ?? CustomerBaseline.None);
+
+    /// <summary>A context for a transaction judged against a longer term baseline.</summary>
+    internal static FraudEvaluationContext WithBaseline(
+        TransactionEvent transaction,
+        CustomerBaseline baseline) =>
+        new(transaction, CustomerHistory.Empty(DefaultLookback), baseline);
 }

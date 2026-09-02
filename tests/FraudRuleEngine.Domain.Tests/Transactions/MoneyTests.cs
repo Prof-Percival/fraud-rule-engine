@@ -220,3 +220,63 @@ public sealed class MoneyTests
         Should.Throw<ArgumentOutOfRangeException>(() => defaulted + defaulted);
     }
 }
+
+public sealed class MoneyMultiplicationTests
+{
+    [Fact]
+    public void Scales_an_amount_by_a_factor()
+    {
+        (new Money(400m, Currency.Zar) * 5m).ShouldBe(new Money(2_000m, Currency.Zar));
+        new Money(400m, Currency.Zar).Multiply(0.5m).ShouldBe(new Money(200m, Currency.Zar));
+    }
+
+    [Fact]
+    public void Multiplies_from_either_side()
+    {
+        (2m * new Money(150m, Currency.Zar)).ShouldBe(new Money(300m, Currency.Zar));
+        (new Money(150m, Currency.Zar) * 2m).ShouldBe(new Money(300m, Currency.Zar));
+    }
+
+    [Fact]
+    public void Keeps_the_currency()
+    {
+        (new Money(100m, Currency.Usd) * 3m).Currency.ShouldBe(Currency.Usd);
+    }
+
+    [Fact]
+    public void Rounds_a_result_that_exceeds_the_supported_scale()
+    {
+        // The constructor rejects an out of scale amount rather than altering it, because the caller
+        // has to resolve what a fifth decimal place meant. Digits our own arithmetic produced are our
+        // problem, so multiplication rounds instead of refusing.
+        var result = new Money(1m, Currency.Zar) * 0.123456m;
+
+        result.Amount.ShouldBe(0.1235m);
+        ((int)result.Amount.Scale).ShouldBeLessThanOrEqualTo(Money.MaximumScale);
+    }
+
+    [Fact]
+    public void Rounds_halfway_cases_to_even()
+    {
+        // Banker's rounding, so halfway cases do not all move the same way. Rounding away from zero
+        // would bias every one of them upward, and across a large volume that bias is real money.
+        //
+        // Note that the halfway value has to be produced by the multiplication rather than passed in,
+        // since the constructor refuses an amount carrying five decimal places in the first place.
+        var oneRand = new Money(1m, Currency.Zar);
+        var threeRand = new Money(3m, Currency.Zar);
+
+        // 0.00005 sits exactly halfway and the digit before it is even, so it rounds down.
+        (oneRand * 0.00005m).Amount.ShouldBe(0.0000m);
+
+        // 0.00015 sits exactly halfway and the digit before it is odd, so it rounds up.
+        (threeRand * 0.00005m).Amount.ShouldBe(0.0002m);
+    }
+
+    [Fact]
+    public void Handles_zero_and_negative_factors()
+    {
+        (new Money(500m, Currency.Zar) * 0m).ShouldBe(Money.Zero(Currency.Zar));
+        (new Money(500m, Currency.Zar) * -1m).Amount.ShouldBe(-500m);
+    }
+}
