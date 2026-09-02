@@ -33,6 +33,8 @@ internal static class FraudEngineRegistration
         services.AddSingleton<IFraudRule, HighRiskCategoryRule>();
         services.AddSingleton<IFraudRule, DeniedMerchantRule>();
         services.AddSingleton<IFraudRule, UnusualHourRule>();
+        services.AddSingleton<IFraudRule, TransactionVelocityRule>();
+        services.AddSingleton<IFraudRule, ImpossibleTravelRule>();
 
         services.AddSingleton<FraudRuleEvaluator>();
 
