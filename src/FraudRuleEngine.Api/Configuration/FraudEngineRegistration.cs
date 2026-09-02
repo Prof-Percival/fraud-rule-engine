@@ -1,4 +1,5 @@
 using FraudRuleEngine.Domain.Rules;
+using FraudRuleEngine.Domain.Scoring;
 
 namespace FraudRuleEngine.Api.Configuration;
 
@@ -28,6 +29,7 @@ internal static class FraudEngineRegistration
         services.AddSingleton<IFraudRule, AmountEscalationRule>();
 
         services.AddSingleton<FraudRuleEvaluator>();
+        services.AddSingleton<IRiskScoringPolicy, WeightedRiskScoringPolicy>();
 
         return services;
     }
