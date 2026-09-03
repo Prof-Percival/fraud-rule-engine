@@ -42,5 +42,6 @@ if (app.Environment.IsDevelopment())
 }
 
 app.MapTransactionEndpoints();
+app.MapAssessmentEndpoints();
 
 await app.RunAsync();

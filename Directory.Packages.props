@@ -18,6 +18,12 @@
 
   <ItemGroup Label="Persistence">
     <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="10.0.11" />
+
+    <!--
+      Pinned because the Npgsql provider references 10.0.4 transitively, which otherwise wins and
+      produces an assembly version conflict against the 10.0.11 we ask for directly.
+    -->
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.11" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.11" />
     <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />
     <PackageVersion Include="EFCore.NamingConventions" Version="10.0.1" />
