@@ -1,4 +1,6 @@
 using FraudRuleEngine.Api.Configuration;
+using FraudRuleEngine.Api.Endpoints;
+using FraudRuleEngine.Api.Middleware;
 using FraudRuleEngine.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -17,11 +19,18 @@ var connectionString = builder.Configuration.GetConnectionString("Default")
         "ConnectionStrings:Default is not configured. The service cannot run without a database.");
 
 builder.Services.AddOpenApi();
+builder.Services.AddProblemDetails();
+builder.Services.AddExceptionHandler<DomainExceptionHandler>();
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddFraudRuleEngine();
 builder.Services.AddFraudEnginePersistence(connectionString);
 
 var app = builder.Build();
+
+// Before the endpoints, so anything they throw is turned into a problem response rather than an empty
+// 500 with the detail only in the logs.
+app.UseExceptionHandler();
+app.UseStatusCodePages();
 
 if (app.Environment.IsDevelopment())
 {
@@ -31,5 +40,7 @@ if (app.Environment.IsDevelopment())
     // replica, so production applies migrations as a separate step.
     await app.Services.ApplyMigrationsAsync();
 }
+
+app.MapTransactionEndpoints();
 
 await app.RunAsync();

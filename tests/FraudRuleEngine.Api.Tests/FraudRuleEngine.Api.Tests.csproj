@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\FraudRuleEngine.Api\FraudRuleEngine.Api.csproj" />
+  </ItemGroup>
+
+</Project>
