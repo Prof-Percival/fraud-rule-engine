@@ -20,4 +20,18 @@ internal static partial class Log
         Level = LogLevel.Information,
         Message = "Rejected a transaction that broke a domain rule: {Reason}")]
     internal static partial void RejectedTransaction(ILogger logger, string reason);
+
+    /// <remarks>
+    /// Warning rather than error: the batch as a whole succeeded and the caller was told which item
+    /// failed, so this needs looking at but nothing is broken.
+    /// </remarks>
+    [LoggerMessage(
+        EventId = 1001,
+        Level = LogLevel.Warning,
+        Message = "Batch item {Index} ({EventId}) could not be assessed")]
+    internal static partial void BatchItemFailed(
+        ILogger logger,
+        int index,
+        string eventId,
+        Exception exception);
 }
