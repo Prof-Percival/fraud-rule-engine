@@ -1,4 +1,3 @@
-using FraudRuleEngine.Domain.Assessments;
 using FraudRuleEngine.Domain.Scoring;
 using FraudRuleEngine.Domain.Transactions;
 using Microsoft.Extensions.Options;
@@ -21,9 +20,10 @@ internal sealed class FraudRuleSetOptionsValidator : IValidateOptions<FraudRuleS
         {
             errors.Add("RuleSet:Version is required, so every assessment records which rule set produced it.");
         }
-        else if (options.Version.Length > RuleSetVersion.MaximumLength)
+        else if (options.Version.Length > FraudRuleSetOptions.MaximumVersionLabelLength)
         {
-            errors.Add($"RuleSet:Version must be at most {RuleSetVersion.MaximumLength} characters.");
+            errors.Add(
+                $"RuleSet:Version must be at most {FraudRuleSetOptions.MaximumVersionLabelLength} characters.");
         }
 
         ValidateScoring(options.Scoring, errors);

@@ -1,5 +1,4 @@
 using FraudRuleEngine.Application.Abstractions;
-using FraudRuleEngine.Infrastructure.Configuration;
 using FraudRuleEngine.Infrastructure.Enrichment;
 using FraudRuleEngine.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -33,7 +32,6 @@ public static class InfrastructureRegistration
         services.AddScoped<IFraudAssessmentStore, FraudAssessmentStore>();
         services.AddScoped<ICustomerContextSource, CustomerContextSource>();
         services.AddScoped<IAssessmentQueries, AssessmentQueries>();
-        services.AddSingleton<IRuleSetVersionProvider, FixedRuleSetVersionProvider>();
 
         return services;
     }

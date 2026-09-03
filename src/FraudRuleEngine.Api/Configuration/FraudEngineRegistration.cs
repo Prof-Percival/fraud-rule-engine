@@ -1,3 +1,4 @@
+using FraudRuleEngine.Application.Abstractions;
 using FraudRuleEngine.Application.Evaluation;
 using FraudRuleEngine.Domain.Rules;
 using FraudRuleEngine.Domain.Scoring;
@@ -27,6 +28,10 @@ internal static class FraudEngineRegistration
             .ValidateOnStart();
 
         services.AddSingleton<IValidateOptions<FraudRuleSetOptions>, FraudRuleSetOptionsValidator>();
+
+        // The version stamped on every assessment derives from the same options, so it names the numbers
+        // the assessment was actually scored under.
+        services.AddSingleton<IRuleSetVersionProvider, ConfiguredRuleSetVersionProvider>();
 
         services.AddSingleton(provider =>
             new FraudRuleEvaluator(FraudRuleSetFactory.Rules(Options(provider).Rules)));

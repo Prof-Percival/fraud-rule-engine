@@ -9,6 +9,9 @@ public sealed class FraudRuleSetOptions
 {
     public const string SectionName = "RuleSet";
 
+    /// <summary>Leaves room for the fingerprint the effective version appends.</summary>
+    public const int MaximumVersionLabelLength = 48;
+
     /// <summary>An operator meaningful label for this configuration, such as a release name.</summary>
     public string Version { get; set; } = string.Empty;
 
