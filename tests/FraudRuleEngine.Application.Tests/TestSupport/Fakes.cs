@@ -30,30 +30,69 @@ internal sealed class FakeCustomerContextSource : ICustomerContextSource
 
 internal sealed class FakeAssessmentStore : IFraudAssessmentStore
 {
+    private readonly Dictionary<string, FraudAssessment> _byEventId = new(StringComparer.Ordinal);
+
+    /// <summary>Makes the next save report the event as already assessed.</summary>
+    public FraudAssessment? ExistingForNextSave { get; set; }
+
     public TransactionEvent? SavedTransaction { get; private set; }
 
     public FraudAssessment? SavedAssessment { get; private set; }
 
     public int Calls { get; private set; }
 
-    public Task SaveAsync(
+    public int LookupCalls { get; private set; }
+
+    public Task<SaveResult> SaveAsync(
         TransactionEvent transaction,
         FraudAssessment assessment,
         CancellationToken cancellationToken)
     {
         Calls++;
+
+        if (ExistingForNextSave is { } existing)
+        {
+            _byEventId[transaction.EventId.Value] = existing;
+            return Task.FromResult(SaveResult.AlreadyAssessed);
+        }
+
         SavedTransaction = transaction;
         SavedAssessment = assessment;
-        return Task.CompletedTask;
+        _byEventId[transaction.EventId.Value] = assessment;
+
+        return Task.FromResult(SaveResult.Saved);
     }
+
+    public Task<FraudAssessment?> FindByEventAsync(EventId eventId, CancellationToken cancellationToken)
+    {
+        LookupCalls++;
+
+        return Task.FromResult(_byEventId.GetValueOrDefault(eventId.Value));
+    }
+}
+
+/// <summary>Reports a clash but has nothing stored, which should not happen and must not be silent.</summary>
+internal sealed class InconsistentAssessmentStore : IFraudAssessmentStore
+{
+    public Task<SaveResult> SaveAsync(
+        TransactionEvent transaction,
+        FraudAssessment assessment,
+        CancellationToken cancellationToken) =>
+        Task.FromResult(SaveResult.AlreadyAssessed);
+
+    public Task<FraudAssessment?> FindByEventAsync(EventId eventId, CancellationToken cancellationToken) =>
+        Task.FromResult<FraudAssessment?>(null);
 }
 
 internal sealed class ThrowingAssessmentStore : IFraudAssessmentStore
 {
-    public Task SaveAsync(
+    public Task<SaveResult> SaveAsync(
         TransactionEvent transaction,
         FraudAssessment assessment,
         CancellationToken cancellationToken) =>
+        throw new InvalidOperationException("Database unavailable.");
+
+    public Task<FraudAssessment?> FindByEventAsync(EventId eventId, CancellationToken cancellationToken) =>
         throw new InvalidOperationException("Database unavailable.");
 }
 

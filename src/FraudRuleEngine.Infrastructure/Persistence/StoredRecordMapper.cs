@@ -86,6 +86,32 @@ internal static class StoredRecordMapper
         return stored;
     }
 
+    internal static FraudAssessment ToDomain(
+        StoredAssessment stored,
+        IReadOnlyList<StoredRuleOutcome> outcomes)
+    {
+        var restored = outcomes
+            .OrderBy(outcome => outcome.Ordinal)
+            .Select(outcome => outcome.IsTriggered
+                ? RuleOutcome.Triggered(
+                    RuleId.From(outcome.RuleId),
+                    ParseOrUnknown<RuleSeverity>(outcome.Severity),
+                    outcome.Reason)
+                : RuleOutcome.Clear(RuleId.From(outcome.RuleId), outcome.Reason))
+            .ToArray();
+
+        return FraudAssessment.Restore(
+            AssessmentId.From(stored.Id),
+            EventId.From(stored.EventId),
+            TransactionId.From(stored.TransactionId),
+            CustomerId.From(stored.CustomerId),
+            new RiskScore(stored.RiskScore),
+            ParseOrUnknown<FraudDecision>(stored.Decision),
+            restored,
+            RuleSetVersion.From(stored.RuleSetVersion),
+            stored.EvaluatedAtUtc);
+    }
+
     /// <summary>
     /// Reads an enum stored by name, falling back to the zero value when the name is unrecognised.
     /// </summary>

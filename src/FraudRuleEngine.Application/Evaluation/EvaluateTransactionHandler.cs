@@ -74,8 +74,23 @@ public sealed class EvaluateTransactionHandler
 
         // Persisted before returning, not after. A caller that acted on a decline which was never
         // recorded would leave a customer refused with nothing to show why.
-        await _store.SaveAsync(transaction, assessment, cancellationToken).ConfigureAwait(false);
+        var result = await _store.SaveAsync(transaction, assessment, cancellationToken).ConfigureAwait(false);
 
-        return assessment;
+        if (result is SaveResult.Saved)
+        {
+            return assessment;
+        }
+
+        // The event had already been assessed, so return the original verdict rather than the one just
+        // computed. Two deliveries of one event must produce one answer: replying with a fresh assessment
+        // that was never stored would mean the caller acting on a decision nobody can look up, and the
+        // second answer can legitimately differ from the first because the customer's history has moved
+        // on since.
+        var existing = await _store.FindByEventAsync(transaction.EventId, cancellationToken).ConfigureAwait(false);
+
+        // Only reachable if the original was deleted between the failed insert and this read, which
+        // nothing in this service does. Loud rather than silently returning the unsaved assessment.
+        return existing ?? throw new InvalidOperationException(
+            $"Event {transaction.EventId} was reported as already assessed but no assessment was found.");
     }
 }

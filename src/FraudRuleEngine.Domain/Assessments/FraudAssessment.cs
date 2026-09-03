@@ -72,6 +72,30 @@ public sealed record FraudAssessment
         _ruleOutcomes = [.. ruleOutcomes];
     }
 
+    private FraudAssessment(
+        AssessmentId id,
+        EventId eventId,
+        TransactionId transactionId,
+        CustomerId customerId,
+        RiskScore riskScore,
+        FraudDecision decision,
+        IReadOnlyList<RuleOutcome> ruleOutcomes,
+        RuleSetVersion ruleSetVersion,
+        DateTimeOffset evaluatedAt)
+    {
+        ArgumentNullException.ThrowIfNull(ruleOutcomes);
+
+        Id = id;
+        EventId = eventId;
+        TransactionId = transactionId;
+        CustomerId = customerId;
+        RiskScore = riskScore;
+        Decision = decision;
+        RuleSetVersion = ruleSetVersion;
+        EvaluatedAt = evaluatedAt;
+        _ruleOutcomes = [.. ruleOutcomes];
+    }
+
     public AssessmentId Id { get; }
 
     /// <summary>The event this assessed, which is also the idempotency key it arrived under.</summary>
@@ -95,6 +119,26 @@ public sealed record FraudAssessment
 
     /// <summary>Every rule that ran, in evaluation order, whether or not it fired.</summary>
     public IReadOnlyList<RuleOutcome> RuleOutcomes => _ruleOutcomes;
+
+    /// <summary>
+    /// Rebuilds an assessment read back from storage.
+    /// </summary>
+    /// <remarks>
+    /// Takes the identifiers directly, because the transaction they were copied from is not necessarily
+    /// loaded when an assessment is read. The public constructor takes a transaction instead, which is
+    /// the right shape when one is being made and the wrong shape when one is being restored.
+    /// </remarks>
+    public static FraudAssessment Restore(
+        AssessmentId id,
+        EventId eventId,
+        TransactionId transactionId,
+        CustomerId customerId,
+        RiskScore riskScore,
+        FraudDecision decision,
+        IReadOnlyList<RuleOutcome> ruleOutcomes,
+        RuleSetVersion ruleSetVersion,
+        DateTimeOffset evaluatedAt) =>
+        new(id, eventId, transactionId, customerId, riskScore, decision, ruleOutcomes, ruleSetVersion, evaluatedAt);
 
     /// <summary>Only the rules that fired, which is what an analyst reads first.</summary>
     public IEnumerable<RuleOutcome> TriggeredRules => _ruleOutcomes.Where(outcome => outcome.IsTriggered);

@@ -223,3 +223,83 @@ public sealed class EvaluateTransactionHandlerTests
             : RuleOutcome.Clear(Id, $"{Id} did not fire.");
     }
 }
+
+public sealed class IdempotentEvaluationTests
+{
+    private static readonly DateTimeOffset EvaluatedAt = new(2026, 9, 3, 12, 0, 0, TimeSpan.Zero);
+
+    private readonly FakeCustomerContextSource _contextSource = new();
+    private readonly FakeAssessmentStore _store = new();
+
+    [Fact]
+    public async Task Returns_the_original_verdict_when_the_event_was_already_assessed()
+    {
+        // Two deliveries of one event must produce one answer. Returning the freshly computed assessment
+        // would hand the caller a decision nobody can look up, and it can legitimately differ from the
+        // stored one because the customer's history has moved on since.
+        var transaction = ATransaction.Valid(eventId: "evt-dup");
+        var handler = Handler();
+
+        var first = await handler.HandleAsync(transaction, TestContext.Current.CancellationToken);
+
+        _store.ExistingForNextSave = first;
+        var second = await handler.HandleAsync(transaction, TestContext.Current.CancellationToken);
+
+        second.Id.ShouldBe(first.Id);
+        second.RiskScore.ShouldBe(first.RiskScore);
+        second.EvaluatedAt.ShouldBe(first.EvaluatedAt);
+    }
+
+    [Fact]
+    public async Task Looks_the_original_up_only_when_the_save_clashed()
+    {
+        var handler = Handler();
+
+        await handler.HandleAsync(ATransaction.Valid(), TestContext.Current.CancellationToken);
+
+        _store.LookupCalls.ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task Fails_loudly_if_a_clash_is_reported_but_nothing_is_stored()
+    {
+        // Should be unreachable. Returning the unsaved assessment instead would be worse than throwing,
+        // because the caller would act on a verdict that does not exist.
+        var handler = new EvaluateTransactionHandler(
+            _contextSource,
+            new FraudRuleEvaluator([new StubRule("Quiet", null)]),
+            new WeightedRiskScoringPolicy(),
+            new InconsistentAssessmentStore(),
+            new FixedRuleSetVersion(),
+            new FrozenClock(EvaluatedAt));
+
+        await Should.ThrowAsync<InvalidOperationException>(
+            () => handler.HandleAsync(ATransaction.Valid(), TestContext.Current.CancellationToken));
+    }
+
+    private EvaluateTransactionHandler Handler() =>
+        new(
+            _contextSource,
+            new FraudRuleEvaluator([new StubRule("Loud", RuleSeverity.High)]),
+            new WeightedRiskScoringPolicy(),
+            _store,
+            new FixedRuleSetVersion(),
+            new FrozenClock(EvaluatedAt));
+
+    private sealed class StubRule : IFraudRule
+    {
+        private readonly RuleSeverity? _severity;
+
+        internal StubRule(string id, RuleSeverity? severity)
+        {
+            Id = RuleId.From(id);
+            _severity = severity;
+        }
+
+        public RuleId Id { get; }
+
+        public RuleOutcome Evaluate(FraudEvaluationContext context) => _severity is { } severity
+            ? RuleOutcome.Triggered(Id, severity, $"{Id} fired.")
+            : RuleOutcome.Clear(Id, $"{Id} did not fire.");
+    }
+}
