@@ -2,6 +2,7 @@ using FraudRuleEngine.Api.Configuration;
 using FraudRuleEngine.Api.Endpoints;
 using FraudRuleEngine.Api.Middleware;
 using FraudRuleEngine.Infrastructure;
+using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -35,6 +36,12 @@ app.UseStatusCodePages();
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
+
+    // Development only. Published API documentation hands out the shape of every route and payload.
+    app.MapScalarApiReference(options => options
+        .WithTitle("Fraud rule engine")
+        .WithTheme(ScalarTheme.BluePlanet)
+        .AddDocument("v1"));
 
     // Development only. An application that migrates on boot fights itself once it runs more than one
     // replica, so production applies migrations as a separate step.
