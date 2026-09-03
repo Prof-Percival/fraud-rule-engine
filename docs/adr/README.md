@@ -23,7 +23,9 @@ Anything longer stops being written.
 | 0006 | API key authentication for this submission | Planned |
 | 0007 | PostgreSQL as the data store | Planned |
 | 0008 | Keyset pagination rather than offset | Planned |
+| [0009](0009-rule-thresholds-in-validated-configuration.md) | Rule thresholds live in validated configuration | Accepted |
 
 Records 0004 through 0008 are written as the corresponding work lands, in the sequence set
-out in `PLAN.md`. Writing them up front would be inventing the reasoning before doing the
-work.
+out in `PLAN.md`. 0009 was not foreseen in that list: moving the thresholds into configuration
+turned out to be a decision worth its own record, so it took the next free number rather than
+displacing the reserved ones.
