@@ -6,7 +6,7 @@ namespace FraudRuleEngine.Domain.Tests.Rules;
 
 public sealed class DeniedMerchantRuleTests
 {
-    private readonly DeniedMerchantRule _rule = new();
+    private readonly DeniedMerchantRule _rule = Defaults.DeniedMerchant();
 
     [Theory]
     [InlineData("MERCH-DENY-0001")]

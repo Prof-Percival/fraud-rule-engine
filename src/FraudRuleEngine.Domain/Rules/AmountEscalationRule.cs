@@ -18,17 +18,17 @@ namespace FraudRuleEngine.Domain.Rules;
 /// </remarks>
 public sealed class AmountEscalationRule : IFraudRule
 {
-    /// <summary>
-    /// High on purpose. A mean is easily pulled around by a few larger purchases, so a tighter multiple
-    /// would fire on ordinary variation.
-    /// </summary>
-    private readonly decimal _multiple = 5m;
+    private readonly decimal _multiple;
+    private readonly int _minimumBaselineTransactions;
 
-    /// <summary>
-    /// An average over two transactions is not a baseline. Without this the rule would flag a customer's
-    /// third purchase for being unlike their first two.
-    /// </summary>
-    private readonly int _minimumBaselineTransactions = 10;
+    public AmountEscalationRule(decimal multiple, int minimumBaselineTransactions)
+    {
+        ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(multiple, 1m);
+        ArgumentOutOfRangeException.ThrowIfLessThan(minimumBaselineTransactions, 1);
+
+        _multiple = multiple;
+        _minimumBaselineTransactions = minimumBaselineTransactions;
+    }
 
     /// <inheritdoc />
     public RuleId Id { get; } = RuleId.From("AmountEscalation");

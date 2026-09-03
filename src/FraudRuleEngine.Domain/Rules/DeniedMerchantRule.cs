@@ -13,12 +13,15 @@ namespace FraudRuleEngine.Domain.Rules;
 /// </remarks>
 public sealed class DeniedMerchantRule : IFraudRule
 {
-    private readonly FrozenSet<MerchantId> _deniedMerchants = new[]
+    private readonly FrozenSet<MerchantId> _deniedMerchants;
+
+    // An empty deny list is allowed: it leaves the rule dormant rather than broken.
+    public DeniedMerchantRule(IReadOnlySet<MerchantId> deniedMerchants)
     {
-        MerchantId.From("MERCH-DENY-0001"),
-        MerchantId.From("MERCH-DENY-0002"),
-        MerchantId.From("MERCH-DENY-0003"),
-    }.ToFrozenSet();
+        ArgumentNullException.ThrowIfNull(deniedMerchants);
+
+        _deniedMerchants = deniedMerchants.ToFrozenSet();
+    }
 
     public RuleId Id { get; } = RuleId.From("DeniedMerchant");
 

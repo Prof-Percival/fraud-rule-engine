@@ -18,11 +18,23 @@ namespace FraudRuleEngine.Domain.Rules;
 /// </remarks>
 public sealed class UnusualHourRule : IFraudRule
 {
-    /// <summary>Inclusive. One through five avoids the evening, when plenty of people shop online.</summary>
-    private readonly TimeOnly _windowStart = new(1, 0);
+    private readonly TimeOnly _windowStart;
+    private readonly TimeOnly _windowEnd;
 
-    /// <summary>Exclusive, so 05:00 belongs to the ordinary day.</summary>
-    private readonly TimeOnly _windowEnd = new(5, 0);
+    // Start is inclusive, end exclusive. The window must not wrap past midnight: the rule has no range
+    // logic for that, so it is refused rather than silently misread.
+    public UnusualHourRule(TimeOnly windowStart, TimeOnly windowEnd)
+    {
+        if (windowStart >= windowEnd)
+        {
+            throw new ArgumentException(
+                $"Window start {windowStart:HH:mm} must be before window end {windowEnd:HH:mm}.",
+                nameof(windowStart));
+        }
+
+        _windowStart = windowStart;
+        _windowEnd = windowEnd;
+    }
 
     public RuleId Id { get; } = RuleId.From("UnusualHour");
 

@@ -6,7 +6,7 @@ namespace FraudRuleEngine.Domain.Tests.Rules;
 
 public sealed class HighRiskCategoryRuleTests
 {
-    private readonly HighRiskCategoryRule _rule = new();
+    private readonly HighRiskCategoryRule _rule = Defaults.HighRiskCategory();
 
     [Theory]
     [InlineData(TransactionCategory.Gambling)]

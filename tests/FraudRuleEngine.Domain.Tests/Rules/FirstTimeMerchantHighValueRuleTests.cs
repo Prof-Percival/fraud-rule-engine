@@ -9,7 +9,7 @@ public sealed class FirstTimeMerchantHighValueRuleTests
     private static readonly MerchantId Familiar = MerchantId.From("MERCH-FAMILIAR");
     private static readonly MerchantId Unfamiliar = MerchantId.From("MERCH-NEW");
 
-    private readonly FirstTimeMerchantHighValueRule _rule = new();
+    private readonly FirstTimeMerchantHighValueRule _rule = Defaults.FirstTimeMerchantHighValue();
 
     [Fact]
     public void Flags_a_large_amount_at_a_merchant_never_used_before()

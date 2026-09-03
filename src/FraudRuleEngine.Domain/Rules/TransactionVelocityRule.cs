@@ -10,14 +10,24 @@ namespace FraudRuleEngine.Domain.Rules;
 /// </remarks>
 public sealed class TransactionVelocityRule : IFraudRule
 {
-    /// <summary>Counts the transaction being judged, so five means five in total.</summary>
-    private readonly int _threshold = 5;
+    private readonly int _threshold;
+    private readonly TimeSpan _window;
 
-    /// <summary>
-    /// Short enough that ordinary shopping does not reach five, long enough to catch an automated
-    /// sequence. Enrichment must load at least this much history.
-    /// </summary>
-    private readonly TimeSpan _window = TimeSpan.FromMinutes(15);
+    public TransactionVelocityRule(int threshold, TimeSpan window)
+    {
+        ArgumentOutOfRangeException.ThrowIfLessThan(threshold, 2);
+
+        if (window <= TimeSpan.Zero)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(window),
+                window,
+                "The window must be positive.");
+        }
+
+        _threshold = threshold;
+        _window = window;
+    }
 
     public RuleId Id { get; } = RuleId.From("TransactionVelocity");
 

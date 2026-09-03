@@ -7,7 +7,7 @@ public sealed class UnusualHourRuleTests
 {
     private static readonly TimeSpan Johannesburg = TimeSpan.FromHours(2);
 
-    private readonly UnusualHourRule _rule = new();
+    private readonly UnusualHourRule _rule = Defaults.UnusualHour();
 
     [Theory]
     [InlineData(1, 0)]

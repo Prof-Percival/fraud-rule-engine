@@ -13,15 +13,21 @@ namespace FraudRuleEngine.Domain.Rules;
 /// </remarks>
 public sealed class HighRiskCategoryRule : IFraudRule
 {
-    // Unknown is deliberately absent. An unrecognised category means the upstream sent something this
-    // build has not seen, which says nothing about the customer, and treating it as risky would turn
-    // every upstream release into a wave of false positives.
-    private readonly FrozenSet<TransactionCategory> _highRiskCategories = new[]
+    private readonly FrozenSet<TransactionCategory> _highRiskCategories;
+
+    public HighRiskCategoryRule(IReadOnlySet<TransactionCategory> highRiskCategories)
     {
-        TransactionCategory.Gambling,
-        TransactionCategory.Cryptocurrency,
-        TransactionCategory.InternationalTransfer,
-    }.ToFrozenSet();
+        ArgumentNullException.ThrowIfNull(highRiskCategories);
+
+        if (highRiskCategories.Count == 0)
+        {
+            throw new ArgumentException(
+                "At least one category is required, or the rule can never fire.",
+                nameof(highRiskCategories));
+        }
+
+        _highRiskCategories = highRiskCategories.ToFrozenSet();
+    }
 
     public RuleId Id { get; } = RuleId.From("HighRiskCategory");
 

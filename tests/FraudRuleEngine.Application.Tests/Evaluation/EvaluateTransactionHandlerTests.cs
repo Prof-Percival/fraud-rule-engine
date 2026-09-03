@@ -112,7 +112,7 @@ public sealed class EvaluateTransactionHandlerTests
         var handler = new EvaluateTransactionHandler(
             _contextSource,
             new FraudRuleEvaluator([RuleThatTriggers("A", RuleSeverity.High)]),
-            new WeightedRiskScoringPolicy(),
+            StandardPolicy.Scoring(),
             new ThrowingAssessmentStore(),
             new FixedRuleSetVersion(),
             new FrozenClock(EvaluatedAt));
@@ -136,7 +136,7 @@ public sealed class EvaluateTransactionHandlerTests
         var handler = new EvaluateTransactionHandler(
             contextSource,
             new FraudRuleEvaluator([RuleThatClears()]),
-            new WeightedRiskScoringPolicy(),
+            StandardPolicy.Scoring(),
             _store,
             new FixedRuleSetVersion(),
             new FrozenClock(EvaluatedAt));
@@ -169,7 +169,7 @@ public sealed class EvaluateTransactionHandlerTests
     public void Rejects_missing_dependencies()
     {
         var evaluator = new FraudRuleEvaluator([RuleThatClears()]);
-        var policy = new WeightedRiskScoringPolicy();
+        var policy = StandardPolicy.Scoring();
         var version = new FixedRuleSetVersion();
         var clock = new FrozenClock(EvaluatedAt);
 
@@ -196,7 +196,7 @@ public sealed class EvaluateTransactionHandlerTests
         new(
             _contextSource,
             new FraudRuleEvaluator(rules),
-            new WeightedRiskScoringPolicy(),
+            StandardPolicy.Scoring(),
             _store,
             new FixedRuleSetVersion(),
             new FrozenClock(EvaluatedAt));
@@ -268,7 +268,7 @@ public sealed class IdempotentEvaluationTests
         var handler = new EvaluateTransactionHandler(
             _contextSource,
             new FraudRuleEvaluator([new StubRule("Quiet", null)]),
-            new WeightedRiskScoringPolicy(),
+            StandardPolicy.Scoring(),
             new InconsistentAssessmentStore(),
             new FixedRuleSetVersion(),
             new FrozenClock(EvaluatedAt));
@@ -281,7 +281,7 @@ public sealed class IdempotentEvaluationTests
         new(
             _contextSource,
             new FraudRuleEvaluator([new StubRule("Loud", RuleSeverity.High)]),
-            new WeightedRiskScoringPolicy(),
+            StandardPolicy.Scoring(),
             _store,
             new FixedRuleSetVersion(),
             new FrozenClock(EvaluatedAt));

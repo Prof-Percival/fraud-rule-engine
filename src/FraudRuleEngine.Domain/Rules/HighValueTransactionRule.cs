@@ -12,32 +12,21 @@ namespace FraudRuleEngine.Domain.Rules;
 /// </remarks>
 public sealed class HighValueTransactionRule : IFraudRule
 {
-    /// <summary>
-    /// The amount at or above which a transaction is considered high value, per currency.
-    /// </summary>
-    /// <remarks>
-    /// A threshold per currency rather than one number, because <see cref="Money"/> refuses to
-    /// compare across currencies and it is right to do so. Twenty five thousand is a large
-    /// transaction in rand and a very large one in pounds, so a single figure would either flag most
-    /// sterling traffic or almost no rand traffic.
-    ///
-    /// <para>
-    /// Hardcoded for now. These are the numbers a fraud analyst tunes, so they do not belong in a
-    /// compiled constant long term.
-    /// </para>
-    ///
-    /// <para>
-    /// Held as instance state rather than a static, even though nothing varies per instance yet.
-    /// That is the shape this takes once the thresholds are injected.
-    /// </para>
-    /// </remarks>
-    private readonly FrozenDictionary<Currency, Money> _thresholds = new Dictionary<Currency, Money>
+    private readonly FrozenDictionary<Currency, Money> _thresholds;
+
+    public HighValueTransactionRule(IReadOnlyDictionary<Currency, Money> thresholds)
     {
-        [Currency.Zar] = new Money(25_000m, Currency.Zar),
-        [Currency.Usd] = new Money(1_500m, Currency.Usd),
-        [Currency.Eur] = new Money(1_400m, Currency.Eur),
-        [Currency.Gbp] = new Money(1_200m, Currency.Gbp),
-    }.ToFrozenDictionary();
+        ArgumentNullException.ThrowIfNull(thresholds);
+
+        if (thresholds.Count == 0)
+        {
+            throw new ArgumentException(
+                "At least one currency threshold is required, or the rule can never fire.",
+                nameof(thresholds));
+        }
+
+        _thresholds = thresholds.ToFrozenDictionary();
+    }
 
     /// <inheritdoc />
     public RuleId Id { get; } = RuleId.From("HighValueTransaction");

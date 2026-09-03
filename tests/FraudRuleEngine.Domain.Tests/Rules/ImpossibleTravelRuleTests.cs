@@ -8,7 +8,7 @@ public sealed class ImpossibleTravelRuleTests
 {
     private static readonly DateTimeOffset Now = new(2026, 9, 1, 12, 0, 0, TimeSpan.Zero);
 
-    private readonly ImpossibleTravelRule _rule = new();
+    private readonly ImpossibleTravelRule _rule = Defaults.ImpossibleTravel();
 
     [Fact]
     public void Flags_a_card_used_in_two_distant_countries_minutes_apart()

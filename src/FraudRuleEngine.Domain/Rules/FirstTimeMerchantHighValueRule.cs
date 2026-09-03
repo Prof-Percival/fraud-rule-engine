@@ -18,23 +18,27 @@ namespace FraudRuleEngine.Domain.Rules;
 /// </remarks>
 public sealed class FirstTimeMerchantHighValueRule : IFraudRule
 {
-    /// <summary>
-    /// Lower than the high value thresholds, because a second condition is already doing work here. The
-    /// point is to exclude ordinary purchases, not to identify large ones.
-    /// </summary>
-    private readonly FrozenDictionary<Currency, Money> _thresholds = new Dictionary<Currency, Money>
-    {
-        [Currency.Zar] = new Money(5_000m, Currency.Zar),
-        [Currency.Usd] = new Money(300m, Currency.Usd),
-        [Currency.Eur] = new Money(280m, Currency.Eur),
-        [Currency.Gbp] = new Money(240m, Currency.Gbp),
-    }.ToFrozenDictionary();
+    private readonly FrozenDictionary<Currency, Money> _thresholds;
+    private readonly int _minimumBaselineTransactions;
 
-    /// <summary>
-    /// Without this every merchant looks new to a customer with three transactions, and their fourth
-    /// purchase gets flagged for being somewhere they have not been.
-    /// </summary>
-    private readonly int _minimumBaselineTransactions = 10;
+    public FirstTimeMerchantHighValueRule(
+        IReadOnlyDictionary<Currency, Money> thresholds,
+        int minimumBaselineTransactions)
+    {
+        ArgumentNullException.ThrowIfNull(thresholds);
+
+        if (thresholds.Count == 0)
+        {
+            throw new ArgumentException(
+                "At least one currency threshold is required, or the rule can never fire.",
+                nameof(thresholds));
+        }
+
+        ArgumentOutOfRangeException.ThrowIfLessThan(minimumBaselineTransactions, 1);
+
+        _thresholds = thresholds.ToFrozenDictionary();
+        _minimumBaselineTransactions = minimumBaselineTransactions;
+    }
 
     /// <inheritdoc />
     public RuleId Id { get; } = RuleId.From("FirstTimeMerchantHighValue");

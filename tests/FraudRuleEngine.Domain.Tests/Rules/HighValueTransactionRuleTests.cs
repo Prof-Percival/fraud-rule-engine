@@ -6,7 +6,7 @@ namespace FraudRuleEngine.Domain.Tests.Rules;
 
 public sealed class HighValueTransactionRuleTests
 {
-    private readonly HighValueTransactionRule _rule = new();
+    private readonly HighValueTransactionRule _rule = Defaults.HighValue();
 
     [Fact]
     public void Flags_an_amount_above_the_threshold()

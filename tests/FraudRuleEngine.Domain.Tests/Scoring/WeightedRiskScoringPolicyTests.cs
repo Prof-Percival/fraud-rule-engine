@@ -1,11 +1,12 @@
 using FraudRuleEngine.Domain.Rules;
 using FraudRuleEngine.Domain.Scoring;
+using FraudRuleEngine.Domain.Tests.TestSupport;
 
 namespace FraudRuleEngine.Domain.Tests.Scoring;
 
 public sealed class WeightedRiskScoringPolicyTests
 {
-    private readonly WeightedRiskScoringPolicy _policy = new();
+    private readonly WeightedRiskScoringPolicy _policy = Defaults.Scoring();
 
     [Fact]
     public void Scores_zero_when_nothing_fired()
@@ -174,6 +175,47 @@ public sealed class WeightedRiskScoringPolicyTests
     public void Rejects_a_null_outcome_list()
     {
         Should.Throw<ArgumentNullException>(() => _policy.Score(null!));
+    }
+
+    [Fact]
+    public void Refuses_a_severity_with_no_weight()
+    {
+        var missingHigh = new Dictionary<RuleSeverity, int>
+        {
+            [RuleSeverity.Low] = 10,
+            [RuleSeverity.Medium] = 25,
+        };
+
+        Should.Throw<ArgumentException>(
+            () => new WeightedRiskScoringPolicy(missingHigh, new RiskScore(40), new RiskScore(75)));
+    }
+
+    [Fact]
+    public void Refuses_a_zero_weight_rather_than_silently_retiring_a_severity()
+    {
+        var zeroLow = new Dictionary<RuleSeverity, int>
+        {
+            [RuleSeverity.Low] = 0,
+            [RuleSeverity.Medium] = 25,
+            [RuleSeverity.High] = 45,
+        };
+
+        Should.Throw<ArgumentOutOfRangeException>(
+            () => new WeightedRiskScoringPolicy(zeroLow, new RiskScore(40), new RiskScore(75)));
+    }
+
+    [Fact]
+    public void Refuses_a_review_threshold_not_below_decline()
+    {
+        var weights = new Dictionary<RuleSeverity, int>
+        {
+            [RuleSeverity.Low] = 10,
+            [RuleSeverity.Medium] = 25,
+            [RuleSeverity.High] = 45,
+        };
+
+        Should.Throw<ArgumentException>(
+            () => new WeightedRiskScoringPolicy(weights, new RiskScore(75), new RiskScore(75)));
     }
 
     private static RuleOutcome Triggered(string id, RuleSeverity severity) =>

@@ -6,7 +6,7 @@ namespace FraudRuleEngine.Domain.Tests.Rules;
 
 public sealed class AmountEscalationRuleTests
 {
-    private readonly AmountEscalationRule _rule = new();
+    private readonly AmountEscalationRule _rule = Defaults.AmountEscalation();
 
     [Fact]
     public void Flags_an_amount_far_above_the_customers_average()

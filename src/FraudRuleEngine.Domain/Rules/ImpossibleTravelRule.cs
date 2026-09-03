@@ -20,18 +20,13 @@ namespace FraudRuleEngine.Domain.Rules;
 /// </remarks>
 public sealed class ImpossibleTravelRule : IFraudRule
 {
-    /// <summary>
-    /// A commercial jet cruises around 900. A thousand allows for tailwinds and for terminal clocks that
-    /// are not perfectly aligned. Generous on purpose, since a false positive here inconveniences a real
-    /// customer.
-    /// </summary>
-    private readonly double _maximumSpeedKilometresPerHour = 1_000;
-
-    private readonly TimeSpan _window = TimeSpan.FromHours(12);
+    private readonly double _maximumSpeedKilometresPerHour;
+    private readonly TimeSpan _window;
 
     /// <summary>
-    /// Channels where the card must have been physically present. Unknown is excluded, because assuming
-    /// presence would invent a location.
+    /// Channels where the card must have been physically present. Structural rather than a tuned
+    /// threshold, so it is not configuration: Unknown is excluded because assuming presence would invent
+    /// a location, and an online channel says nothing about where the cardholder is.
     /// </summary>
     private readonly FrozenSet<TransactionChannel> _cardPresentChannels = new[]
     {
@@ -40,6 +35,29 @@ public sealed class ImpossibleTravelRule : IFraudRule
         TransactionChannel.Atm,
         TransactionChannel.Branch,
     }.ToFrozenSet();
+
+    // window must not exceed the history enrichment loads, or the rule silently sees less than it asks.
+    public ImpossibleTravelRule(double maximumSpeedKilometresPerHour, TimeSpan window)
+    {
+        if (maximumSpeedKilometresPerHour <= 0)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(maximumSpeedKilometresPerHour),
+                maximumSpeedKilometresPerHour,
+                "The maximum speed must be positive.");
+        }
+
+        if (window <= TimeSpan.Zero)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(window),
+                window,
+                "The window must be positive.");
+        }
+
+        _maximumSpeedKilometresPerHour = maximumSpeedKilometresPerHour;
+        _window = window;
+    }
 
     public RuleId Id { get; } = RuleId.From("ImpossibleTravel");
 

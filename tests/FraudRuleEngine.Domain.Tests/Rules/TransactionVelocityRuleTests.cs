@@ -8,7 +8,7 @@ public sealed class TransactionVelocityRuleTests
 {
     private static readonly DateTimeOffset Now = new(2026, 9, 1, 12, 0, 0, TimeSpan.Zero);
 
-    private readonly TransactionVelocityRule _rule = new();
+    private readonly TransactionVelocityRule _rule = Defaults.TransactionVelocity();
 
     [Fact]
     public void Does_not_flag_a_customer_with_no_history()
