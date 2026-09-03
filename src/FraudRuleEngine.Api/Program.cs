@@ -1,4 +1,5 @@
 using FraudRuleEngine.Api.Configuration;
+using FraudRuleEngine.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -11,14 +12,24 @@ builder.Host.UseDefaultServiceProvider(options =>
     options.ValidateScopes = true;
 });
 
+var connectionString = builder.Configuration.GetConnectionString("Default")
+    ?? throw new InvalidOperationException(
+        "ConnectionStrings:Default is not configured. The service cannot run without a database.");
+
 builder.Services.AddOpenApi();
+builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddFraudRuleEngine();
+builder.Services.AddFraudEnginePersistence(connectionString);
 
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
+
+    // Development only. An application that migrates on boot fights itself once it runs more than one
+    // replica, so production applies migrations as a separate step.
+    await app.Services.ApplyMigrationsAsync();
 }
 
-app.Run();
+await app.RunAsync();

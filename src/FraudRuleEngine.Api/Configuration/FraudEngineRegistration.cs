@@ -1,3 +1,4 @@
+using FraudRuleEngine.Application.Evaluation;
 using FraudRuleEngine.Domain.Rules;
 using FraudRuleEngine.Domain.Scoring;
 
@@ -30,6 +31,9 @@ internal static class FraudEngineRegistration
 
         services.AddSingleton<FraudRuleEvaluator>();
         services.AddSingleton<IRiskScoringPolicy, WeightedRiskScoringPolicy>();
+
+        // Scoped, because it depends on the scoped store and context source.
+        services.AddScoped<EvaluateTransactionHandler>();
 
         return services;
     }

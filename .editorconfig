@@ -403,3 +403,15 @@ dotnet_diagnostic.CA1707.severity = none
 # Test classes are instantiated by the runner, not by us, so the analyzer suggesting they
 # could be static is wrong here.
 dotnet_diagnostic.CA1052.severity = none
+
+##########################################
+# Generated code
+##########################################
+
+# EF Core writes the migration files and the model snapshot, and regenerating them would reintroduce
+# any violation fixed by hand. Marking the path as generated is what tells the analyzers to leave it
+# alone, rather than suppressing individual rules across the whole project.
+[**/Migrations/*.cs]
+generated_code = true
+dotnet_diagnostic.CA1861.severity = none
+dotnet_diagnostic.CA1825.severity = none
