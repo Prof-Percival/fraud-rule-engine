@@ -23,7 +23,7 @@ builder.Services.AddOpenApi();
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<DomainExceptionHandler>();
 builder.Services.AddSingleton(TimeProvider.System);
-builder.Services.AddFraudRuleEngine();
+builder.Services.AddFraudRuleEngine(builder.Configuration);
 builder.Services.AddFraudEnginePersistence(connectionString);
 
 var app = builder.Build();
