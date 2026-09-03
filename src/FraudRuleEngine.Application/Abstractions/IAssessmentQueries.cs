@@ -39,7 +39,14 @@ public sealed record AssessmentQuery
 
     public DateTimeOffset? To { get; init; }
 
-    public int Page { get; init; } = 1;
+    /// <summary>
+    /// Where to continue from, or null for the first page.
+    /// </summary>
+    /// <remarks>
+    /// Keyset rather than a page number. Offset paging walks and discards every skipped row, and on a
+    /// table taking inserts it repeats or skips rows as new assessments shift the boundary.
+    /// </remarks>
+    public AssessmentCursor? After { get; init; }
 
     public int PageSize { get; init; } = DefaultPageSize;
 }
@@ -49,17 +56,17 @@ public sealed record AssessmentPage
     public required IReadOnlyList<AssessmentView> Items { get; init; }
 
     /// <summary>
-    /// How many rows match the filter across all pages.
+    /// Pass back as <see cref="AssessmentQuery.After"/> for the next page. Null when this is the last.
     /// </summary>
-    /// <remarks>
-    /// Requires a second count query, which is part of what makes offset paging expensive on a large
-    /// table.
-    /// </remarks>
-    public required int TotalCount { get; init; }
-
-    public required int Page { get; init; }
+    public string? NextCursor { get; init; }
 
     public required int PageSize { get; init; }
+
+    /// <summary>
+    /// There is no total count. It needs a second query scanning every matching row, which costs more
+    /// than the page itself.
+    /// </summary>
+    public bool HasMore => NextCursor is not null;
 }
 
 public sealed record AssessmentView

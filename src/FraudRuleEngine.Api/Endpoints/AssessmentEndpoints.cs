@@ -39,7 +39,7 @@ internal static class AssessmentEndpoints
         return routes;
     }
 
-    private static async Task<Ok<AssessmentPage>> SearchAsync(
+    private static async Task<Results<Ok<AssessmentPage>, ValidationProblem>> SearchAsync(
         IAssessmentQueries queries,
         CancellationToken cancellationToken,
         string? customerId = null,
@@ -47,9 +47,26 @@ internal static class AssessmentEndpoints
         int? minScore = null,
         DateTimeOffset? from = null,
         DateTimeOffset? to = null,
-        int page = 1,
+        string? cursor = null,
         int pageSize = AssessmentQuery.DefaultPageSize)
     {
+        AssessmentCursor? after = null;
+
+        if (cursor is not null)
+        {
+            if (!AssessmentCursor.TryDecode(cursor, out var decoded))
+            {
+                return TypedResults.ValidationProblem(
+                    new Dictionary<string, string[]>(StringComparer.Ordinal)
+                    {
+                        ["cursor"] = ["Not a valid cursor. Use the nextCursor from a previous response."],
+                    },
+                    title: "The query could not be accepted.");
+            }
+
+            after = decoded;
+        }
+
         var result = await queries.SearchAsync(
             new AssessmentQuery
             {
@@ -58,7 +75,7 @@ internal static class AssessmentEndpoints
                 MinimumRiskScore = minScore,
                 From = from,
                 To = to,
-                Page = page,
+                After = after,
                 PageSize = pageSize,
             },
             cancellationToken).ConfigureAwait(false);
@@ -85,13 +102,15 @@ internal static class AssessmentEndpoints
         string customerId,
         IAssessmentQueries queries,
         CancellationToken cancellationToken,
-        int page = 1,
+        string? cursor = null,
         int pageSize = AssessmentQuery.DefaultPageSize)
     {
+        AssessmentCursor? after = AssessmentCursor.TryDecode(cursor, out var decoded) ? decoded : null;
+
         // No 404 for a customer with no assessments. An empty page is the correct answer: this service
         // has no customer records of its own, so it cannot tell an unknown customer from a quiet one.
         var result = await queries.SearchAsync(
-            new AssessmentQuery { CustomerId = customerId, Page = page, PageSize = pageSize },
+            new AssessmentQuery { CustomerId = customerId, After = after, PageSize = pageSize },
             cancellationToken).ConfigureAwait(false);
 
         return TypedResults.Ok(result);

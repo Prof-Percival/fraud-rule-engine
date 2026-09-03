@@ -38,20 +38,24 @@ internal sealed class AssessmentQueries : IAssessmentQueries
     {
         ArgumentNullException.ThrowIfNull(query);
 
-        var page = Math.Max(1, query.Page);
         var pageSize = Math.Clamp(query.PageSize, 1, AssessmentQuery.MaximumPageSize);
 
         var matching = Filtered(query);
 
-        // A separate count query, which is part of what makes offset paging costly: the database has to
-        // scan every matching row to answer it, on top of fetching the page.
-        var total = await matching.CountAsync(cancellationToken).ConfigureAwait(false);
+        if (query.After is { } after)
+        {
+            // Becomes (evaluated_at_utc, id) < (@t, @id), which PostgreSQL matches against the
+            // composite index as a seek. The equivalent OR expression is harder for the planner.
+            matching = matching.Where(assessment => EF.Functions.LessThan(
+                ValueTuple.Create(assessment.EvaluatedAtUtc, assessment.Id),
+                ValueTuple.Create(after.EvaluatedAtUtc, after.AssessmentId)));
+        }
 
+        // One row beyond the page, to learn whether another page exists without a count query.
         var items = await matching
             .OrderByDescending(assessment => assessment.EvaluatedAtUtc)
             .ThenByDescending(assessment => assessment.Id)
-            .Skip((page - 1) * pageSize)
-            .Take(pageSize)
+            .Take(pageSize + 1)
             .Select(assessment => new AssessmentView
             {
                 Id = assessment.Id,
@@ -66,14 +70,22 @@ internal sealed class AssessmentQueries : IAssessmentQueries
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 
-        // Outcomes are left off the list view deliberately. Eight rows per assessment means a page of
-        // twenty five carries two hundred rows nobody reads on a list screen; the detail endpoint has
-        // them.
+        string? nextCursor = null;
+
+        if (items.Count > pageSize)
+        {
+            items.RemoveAt(items.Count - 1);
+
+            var last = items[^1];
+            nextCursor = AssessmentCursor.From(last.EvaluatedAtUtc, last.Id).Encode();
+        }
+
+        // Outcomes are left off the list view: eight rows per assessment is two hundred nobody reads on
+        // a list screen. The detail endpoint has them.
         return new AssessmentPage
         {
             Items = items,
-            TotalCount = total,
-            Page = page,
+            NextCursor = nextCursor,
             PageSize = pageSize,
         };
     }
@@ -109,6 +121,7 @@ internal sealed class AssessmentQueries : IAssessmentQueries
             MostTriggeredRules = topRules,
         };
     }
+
 
     private IQueryable<StoredAssessment> Filtered(AssessmentQuery query)
     {

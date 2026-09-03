@@ -45,10 +45,16 @@ internal sealed class StoredAssessmentConfiguration : IEntityTypeConfiguration<S
             .HasDatabaseName("ux_fraud_assessments_event_id")
             .IsUnique();
 
-        // The customer view, newest first.
-        builder.HasIndex(assessment => new { assessment.CustomerId, assessment.EvaluatedAtUtc })
-            .HasDatabaseName("ix_fraud_assessments_customer_evaluated_at")
-            .IsDescending(false, true);
+        // Id is a column rather than only the ordering, so the keyset comparison is satisfied by the
+        // index alone. Without it the planner adds an incremental sort to break ties.
+        builder.HasIndex(assessment => new
+            {
+                assessment.CustomerId,
+                assessment.EvaluatedAtUtc,
+                assessment.Id,
+            })
+            .HasDatabaseName("ix_fraud_assessments_customer_evaluated_at_id")
+            .IsDescending(false, true, true);
 
         // The analyst queue: everything needing attention, newest first. Ordered on evaluated time and
         // id because that is the keyset the paged query walks, and id breaks ties so a page boundary
