@@ -34,4 +34,14 @@ internal static partial class Log
         int index,
         string eventId,
         Exception exception);
+
+    /// <remarks>
+    /// Logged once at startup so the numbers behind a stamped version are recoverable. An assessment
+    /// carries the version fingerprint; this is where the values that fingerprint stands for are written.
+    /// </remarks>
+    [LoggerMessage(
+        EventId = 1002,
+        Level = LogLevel.Information,
+        Message = "Rule set {Version} in effect: {Configuration}")]
+    internal static partial void RuleSetInEffect(ILogger logger, string version, string configuration);
 }

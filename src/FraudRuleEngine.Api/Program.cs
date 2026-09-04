@@ -56,6 +56,7 @@ try
     builder.Services.AddSingleton(TimeProvider.System);
     builder.Services.AddFraudRuleEngine(builder.Configuration);
     builder.Services.AddFraudEnginePersistence(connectionString);
+    builder.Services.AddHostedService<RuleSetStartupLogger>();
 
     var app = builder.Build();
 
