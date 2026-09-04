@@ -19,7 +19,7 @@ Anything longer stops being written.
 | [0002](0002-projects-over-vertical-slices.md) | Separate projects per layer rather than vertical slices | Accepted |
 | [0003](0003-rules-as-pure-functions.md) | Rules are pure synchronous functions with no IO | Accepted |
 | [0004](0004-no-rules-dsl-or-engine-library.md) | No rules DSL or third party rules engine | Accepted |
-| 0005 | HTTP ingestion rather than a message broker | Planned |
+| [0005](0005-http-ingestion-not-a-broker.md) | HTTP ingestion rather than a message broker | Accepted |
 | 0006 | API key authentication for this submission | Planned |
 | 0007 | PostgreSQL as the data store | Planned |
 | 0008 | Keyset pagination rather than offset | Planned |
