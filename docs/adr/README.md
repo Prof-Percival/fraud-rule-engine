@@ -26,7 +26,5 @@ Anything longer stops being written.
 | [0009](0009-rule-thresholds-in-validated-configuration.md) | Rule thresholds live in validated configuration | Accepted |
 | [0010](0010-observability-with-serilog-and-opentelemetry.md) | Serilog for logs, OpenTelemetry for traces and metrics | Accepted |
 
-Records 0004 through 0008 are written as the corresponding work lands, in the sequence set
-out in `PLAN.md`. 0009 was not foreseen in that list: moving the thresholds into configuration
-turned out to be a decision worth its own record, so it took the next free number rather than
-displacing the reserved ones.
+Each record was written as the corresponding work landed, so the reasoning is the reasoning that
+was live at the time rather than reconstructed afterwards.
