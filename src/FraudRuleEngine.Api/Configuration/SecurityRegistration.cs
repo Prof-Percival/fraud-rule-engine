@@ -33,11 +33,11 @@ internal static class SecurityRegistration
                 ApiKeyAuthenticationHandler.SchemeName,
                 configureOptions: null);
 
-        // A fallback policy rather than per route metadata, so a new endpoint is protected by default and
-        // the two routes mapped outside a group are covered too. Opting out has to be deliberate.
+        // A fallback policy rather than per route metadata, so an endpoint added later is protected by
+        // default and the routes mapped outside a group are covered too. Naming no scheme is deliberate:
+        // naming one makes authorization authenticate a second time.
         services.AddAuthorization(options =>
             options.FallbackPolicy = new AuthorizationPolicyBuilder()
-                .AddAuthenticationSchemes(ApiKeyAuthenticationHandler.SchemeName)
                 .RequireAuthenticatedUser()
                 .Build());
 
