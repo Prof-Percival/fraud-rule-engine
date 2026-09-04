@@ -25,9 +25,17 @@ RUN dotnet publish src/FraudRuleEngine.Api \
     --no-build \
     --output /app
 
-# Runs the tests inside the image, so the same result is reachable from compose without an SDK on the
-# host. Not part of the path to the runtime image, so a normal build does not pay for it.
+# Runs the tests inside the image, so the same result is reachable without an SDK on the host. Not part
+# of the path to the runtime image, so a normal build does not pay for it.
 FROM build AS test
+
+# Building this stage runs the tests, and a failure fails the build. The default excludes anything
+# needing a database, because no database is reachable while an image is being built.
+ARG TEST_FILTER="Category!=Integration"
+RUN dotnet test --configuration Release --no-build --filter "$TEST_FILTER"
+
+# Running the stage instead runs everything, which is the compose path, where the database is up and
+# ConnectionStrings__Default points at it.
 ENTRYPOINT ["dotnet", "test", "--configuration", "Release", "--no-build"]
 
 # Chiselled: no shell and no package manager, and it runs as a non root user already.
