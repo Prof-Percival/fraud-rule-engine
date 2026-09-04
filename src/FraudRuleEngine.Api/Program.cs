@@ -87,6 +87,9 @@ try
     app.UseAuthentication();
     app.UseAuthorization();
 
+    // After authentication, so the limiter can partition on the client the key belongs to.
+    app.UseRateLimiter();
+
     if (app.Environment.IsDevelopment())
     {
         app.MapOpenApi().AllowAnonymous();

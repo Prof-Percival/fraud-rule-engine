@@ -44,6 +44,26 @@ public sealed class ApiKeyOptionsValidatorTests
         _validator.Validate(null, options).Failed.ShouldBeTrue();
     }
 
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public void Rejects_an_allowance_that_would_refuse_everything(int requestsPerWindow)
+    {
+        var options = Valid();
+        options.RequestsPerWindow = requestsPerWindow;
+
+        _validator.Validate(null, options).Failed.ShouldBeTrue();
+    }
+
+    [Fact]
+    public void Rejects_a_window_that_is_not_positive()
+    {
+        var options = Valid();
+        options.Window = TimeSpan.Zero;
+
+        _validator.Validate(null, options).Failed.ShouldBeTrue();
+    }
+
     [Fact]
     public void Collects_every_problem_rather_than_stopping_at_the_first()
     {

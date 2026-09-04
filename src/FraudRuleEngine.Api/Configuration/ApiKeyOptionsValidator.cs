@@ -19,6 +19,16 @@ internal sealed class ApiKeyOptionsValidator : IValidateOptions<ApiKeyOptions>
             errors.Add("ApiKey:Keys needs at least one key, or every request would be refused.");
         }
 
+        if (options.RequestsPerWindow <= 0)
+        {
+            errors.Add("ApiKey:RequestsPerWindow must be positive, or no client could make a request.");
+        }
+
+        if (options.Window <= TimeSpan.Zero)
+        {
+            errors.Add("ApiKey:Window must be a positive duration.");
+        }
+
         foreach (var (key, client) in options.Keys)
         {
             if (string.IsNullOrWhiteSpace(key))
