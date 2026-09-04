@@ -22,7 +22,7 @@ Anything longer stops being written.
 | [0005](0005-http-ingestion-not-a-broker.md) | HTTP ingestion rather than a message broker | Accepted |
 | 0006 | API key authentication for this submission | Planned |
 | [0007](0007-postgresql-as-the-data-store.md) | PostgreSQL as the data store | Accepted |
-| 0008 | Keyset pagination rather than offset | Planned |
+| [0008](0008-keyset-pagination.md) | Keyset pagination rather than offset | Accepted |
 | [0009](0009-rule-thresholds-in-validated-configuration.md) | Rule thresholds live in validated configuration | Accepted |
 | [0010](0010-observability-with-serilog-and-opentelemetry.md) | Serilog for logs, OpenTelemetry for traces and metrics | Accepted |
 
