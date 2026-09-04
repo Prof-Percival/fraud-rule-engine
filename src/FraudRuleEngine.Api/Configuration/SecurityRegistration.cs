@@ -26,6 +26,8 @@ internal static class SecurityRegistration
 
         services.AddSingleton<IValidateOptions<ApiKeyOptions>, ApiKeyOptionsValidator>();
 
+        services.AddSingleton<ApiKeyRegistry>();
+
         services.AddAuthentication(ApiKeyAuthenticationHandler.SchemeName)
             .AddScheme<AuthenticationSchemeOptions, ApiKeyAuthenticationHandler>(
                 ApiKeyAuthenticationHandler.SchemeName,

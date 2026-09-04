@@ -1,6 +1,4 @@
 using System.Security.Claims;
-using System.Security.Cryptography;
-using System.Text;
 using System.Text.Encodings.Web;
 using FraudRuleEngine.Api.Configuration;
 using Microsoft.AspNetCore.Authentication;
@@ -15,17 +13,17 @@ internal sealed class ApiKeyAuthenticationHandler : AuthenticationHandler<Authen
 {
     internal const string SchemeName = "ApiKey";
 
-    private readonly IOptionsMonitor<ApiKeyOptions> _keys;
+    private readonly ApiKeyRegistry _registry;
 
     public ApiKeyAuthenticationHandler(
         IOptionsMonitor<AuthenticationSchemeOptions> options,
-        IOptionsMonitor<ApiKeyOptions> keys,
+        ApiKeyRegistry registry,
         ILoggerFactory logger,
         UrlEncoder encoder)
         : base(options, logger, encoder)
     {
-        ArgumentNullException.ThrowIfNull(keys);
-        _keys = keys;
+        ArgumentNullException.ThrowIfNull(registry);
+        _registry = registry;
     }
 
     protected override Task<AuthenticateResult> HandleAuthenticateAsync()
@@ -42,7 +40,7 @@ internal sealed class ApiKeyAuthenticationHandler : AuthenticationHandler<Authen
             return Task.FromResult(AuthenticateResult.Fail("No API key was supplied."));
         }
 
-        var client = Match(presented);
+        var client = _registry.ClientFor(presented);
 
         if (client is null)
         {
@@ -59,23 +57,4 @@ internal sealed class ApiKeyAuthenticationHandler : AuthenticationHandler<Authen
             new AuthenticationTicket(new ClaimsPrincipal(identity), SchemeName)));
     }
 
-    /// <summary>
-    /// Compares against every configured key in fixed time, so the comparison does not leak which
-    /// characters matched through how long it took.
-    /// </summary>
-    private string? Match(string presented)
-    {
-        var presentedBytes = Encoding.UTF8.GetBytes(presented);
-        string? matched = null;
-
-        foreach (var (key, client) in _keys.CurrentValue.Keys)
-        {
-            if (CryptographicOperations.FixedTimeEquals(presentedBytes, Encoding.UTF8.GetBytes(key)))
-            {
-                matched = client;
-            }
-        }
-
-        return matched;
-    }
 }
