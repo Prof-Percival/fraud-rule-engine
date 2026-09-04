@@ -490,6 +490,78 @@ assessment can be traced back to the numbers that produced it.
 window. It is validated the same way: no keys, a key shorter than sixteen characters, or a key with
 no client name fails the boot.
 
+### Where settings come from
+
+Configuration is read in the usual precedence order, with each source overriding the one before it:
+`appsettings.json`, then `appsettings.{Environment}.json`, then environment variables. Nothing in the
+service reads a secret from a file it owns, so a deployment supplies values as environment variables
+and no code changes between environments.
+
+Nesting maps to a double underscore, so `ConnectionStrings:Default` becomes
+`ConnectionStrings__Default` and `RuleSet:Scoring:ReviewThreshold` becomes
+`RuleSet__Scoring__ReviewThreshold`.
+
+One consequence worth stating: `appsettings.Development.json` is the only file carrying a connection
+string and an API key, and it is loaded only when the environment is Development. Running with
+`ASPNETCORE_ENVIRONMENT=Production` and no environment variables therefore does not fall back to the
+development values. It fails to start, reporting that no API keys are configured. A missing credential
+stops the deployment rather than quietly accepting a key that was meant for a laptop.
+
+## Deploying
+
+The image is the deployment artefact. It serves plain HTTP on port 8080, runs as an unprivileged user,
+and contains no shell or package manager. TLS is expected to terminate at the ingress or load balancer
+in front of it, which is the normal arrangement and keeps certificate handling out of the application.
+
+### Credentials
+
+Supply them as environment variables from whatever secret store the platform provides, so the values
+never sit in an image or a repository:
+
+| Platform | How the value arrives |
+|---|---|
+| ECS or Fargate | `secrets` in the task definition, sourced from Secrets Manager or Parameter Store |
+| Kubernetes | a `Secret` projected into the pod as environment variables, or mounted by a CSI driver |
+| Azure Container Apps or App Service | a Key Vault reference in the application settings |
+
+The variables a deployment has to set:
+
+```
+ASPNETCORE_ENVIRONMENT=Production
+ConnectionStrings__Default=Host=...;Port=5432;Database=...;Username=...;Password=...
+ApiKey__Keys__<the-key>=<the-client-it-belongs-to>
+OTEL_EXPORTER_OTLP_ENDPOINT=http://collector:4317   # optional
+```
+
+Rotating a key means adding the new one alongside the old, redeploying, moving callers across, then
+removing the old one. Two keys can be valid at once because the section holds a set rather than a
+single value, so rotation needs no downtime.
+
+### Schema changes
+
+The service does not migrate its own schema outside Development. An application that migrates on boot
+fights itself the moment it runs more than one replica, and a failed migration takes the process down
+instead of leaving something an operator can retry.
+
+Apply the schema as a separate step before the new version rolls out, from a generated script:
+
+```bash
+dotnet ef migrations script --idempotent \
+  --project src/FraudRuleEngine.Infrastructure \
+  --startup-project src/FraudRuleEngine.Infrastructure \
+  --output schema.sql
+```
+
+The script is idempotent, so it can be applied repeatedly and skips anything already present, which is
+what makes it safe to run from a pipeline step or a one shot job.
+
+### Readiness and rollout
+
+Point the orchestrator's liveness probe at `/health/live` and its readiness probe at `/health/ready`.
+Liveness runs no checks and answers whether the process is alive, so a brief database outage does not
+cause a restart loop. Readiness includes the database, so an instance that cannot reach it is taken out
+of rotation and put back when it recovers. Both are unauthenticated, so a probe needs no credential.
+
 ## Observability
 
 Logs are structured, one line per request with method, path, status and elapsed time, as readable
@@ -552,6 +624,12 @@ deliberately left out and why.
 ## Known limits
 
 Stated plainly because they are design decisions rather than oversights.
+
+Rate limiting counts requests in the memory of one instance, so the allowance is per instance
+rather than per client across the deployment. Two replicas admit twice the configured rate.
+That is deliberate for this scope, since it needs no shared state and still stops a single
+caller saturating the instance it reaches. Enforcing one allowance across replicas needs a
+shared counter, in Redis or at the ingress, which is where this would go next.
 
 The synchronous evaluation path holds at a few hundred requests per second on modest
 hardware. The rules themselves are microseconds; the enrichment read is the bottleneck.
