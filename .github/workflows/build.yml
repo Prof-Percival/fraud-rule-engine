@@ -38,3 +38,8 @@ jobs:
 
       - name: Test
         run: dotnet test --configuration Release --no-build
+
+      # The brief asks for a runnable container, so a change that breaks the image should fail here
+      # rather than being discovered by whoever tries to run it.
+      - name: Build the container image
+        run: docker build --target final --tag fraud-rule-engine:ci .
