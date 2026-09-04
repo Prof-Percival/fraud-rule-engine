@@ -21,7 +21,7 @@ Anything longer stops being written.
 | [0004](0004-no-rules-dsl-or-engine-library.md) | No rules DSL or third party rules engine | Accepted |
 | [0005](0005-http-ingestion-not-a-broker.md) | HTTP ingestion rather than a message broker | Accepted |
 | 0006 | API key authentication for this submission | Planned |
-| 0007 | PostgreSQL as the data store | Planned |
+| [0007](0007-postgresql-as-the-data-store.md) | PostgreSQL as the data store | Accepted |
 | 0008 | Keyset pagination rather than offset | Planned |
 | [0009](0009-rule-thresholds-in-validated-configuration.md) | Rule thresholds live in validated configuration | Accepted |
 | [0010](0010-observability-with-serilog-and-opentelemetry.md) | Serilog for logs, OpenTelemetry for traces and metrics | Accepted |
