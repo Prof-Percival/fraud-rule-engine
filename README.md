@@ -400,8 +400,15 @@ So the same test code works from a developer machine and from inside the compose
 
 ## Using the API
 
-All data endpoints require an API key header. The development key is in
-`appsettings.Development.json`. Health probes are unauthenticated.
+All data endpoints require an `X-Api-Key` header. The development key is
+`dev-local-key-0123456789`, set in `appsettings.Development.json`, and it is the only key that
+ships. Health probes are unauthenticated, as are the OpenAPI document and its browsable
+reference, which exist in development only.
+
+A request without a key, or with one that is not configured, comes back as 401. Each client is
+rate limited separately, keyed on the client its API key belongs to, and exceeding the allowance
+returns 429 with a `Retry-After` header. Both are `application/problem+json`, the same shape as
+every other error.
 
 There is a `docs/requests.http` file covering every endpoint with realistic payloads. It
 runs directly in Visual Studio, Rider and the VS Code REST Client extension, which is the
@@ -412,7 +419,7 @@ Evaluate a transaction:
 ```bash
 curl -X POST http://localhost:8080/api/v1/transactions/evaluate \
   -H "Content-Type: application/json" \
-  -H "X-Api-Key: dev-local-key" \
+  -H "X-Api-Key: dev-local-key-0123456789" \
   -d '{
     "eventId": "8f2a1c74-6b3e-4d19-9a52-1e7c4f8b2d63",
     "transactionId": "TXN-000123",
@@ -438,8 +445,8 @@ Use `curl.exe` explicitly, or use `docs/requests.http`.
 Query assessments:
 
 ```bash
-curl -H "X-Api-Key: dev-local-key" \
-  "http://localhost:8080/api/v1/assessments?decision=Review&minScore=60&limit=25"
+curl -H "X-Api-Key: dev-local-key-0123456789" \
+  "http://localhost:8080/api/v1/assessments?decision=Review&minScore=60&pageSize=25"
 ```
 
 Paging is keyset based. Responses carry a `nextCursor`, which is passed back as
@@ -449,7 +456,7 @@ and it repeats or skips rows when inserts land between page requests.
 Summary counts:
 
 ```bash
-curl -H "X-Api-Key: dev-local-key" http://localhost:8080/api/v1/assessments/summary
+curl -H "X-Api-Key: dev-local-key-0123456789" http://localhost:8080/api/v1/assessments/summary
 ```
 
 ### Endpoints
@@ -467,6 +474,36 @@ curl -H "X-Api-Key: dev-local-key" http://localhost:8080/api/v1/assessments/summ
 | GET | `/health/ready` | Readiness including database, unauthenticated |
 
 Errors are `application/problem+json` per RFC 9457.
+
+## Configuration
+
+Two sections carry the settings worth changing without a rebuild.
+
+`RuleSet` holds the rule thresholds, the scoring weights and the decision bands, plus a version
+label. It is validated at startup, so a weight that is not positive, a review threshold that is not
+below the decline threshold, or a rule left with no currency thresholds fails the boot with a
+message naming the setting rather than running with a rule quietly disabled. Every assessment is
+stamped with the version label plus a fingerprint of the values actually in force, so a stored
+assessment can be traced back to the numbers that produced it.
+
+`ApiKey` holds the accepted keys, each mapped to a client name, and the rate limit allowance and
+window. It is validated the same way: no keys, a key shorter than sixteen characters, or a key with
+no client name fails the boot.
+
+## Observability
+
+Logs are structured, one line per request with method, path, status and elapsed time, as readable
+text in development and JSON in production. Every response carries an `X-Correlation-Id`, taken
+from the trace id, so a log line, its trace and the reply all point at the same request. Request
+bodies are never logged, which keeps transaction identifiers and amounts out of the logs.
+
+Traces and metrics use OpenTelemetry, covering requests, database calls and the runtime, alongside
+the fraud specific metrics: transactions assessed, the decision split, per rule trigger rate and
+assessment latency. A jump in one rule's trigger rate is an incident signal.
+
+Exporting is opt in. Set `OTEL_EXPORTER_OTLP_ENDPOINT` to send to a collector; without it the
+instrumentation still runs and nothing tries to reach an endpoint that is not there. In development
+`Telemetry__Console=true` prints spans and metrics to the console instead.
 
 ## Architecture
 
@@ -489,14 +526,18 @@ public interface IFraudRule
     RuleId Id { get; }
     RuleOutcome Evaluate(FraudEvaluationContext context);
 }
+Any setting can be overridden by an environment variable using the standard double underscore form,
+which is how the container is configured:
+
+```bash
+env RuleSet__Scoring__ReviewThreshold=45 \
+    ApiKey__Keys__some-long-key-value-here=some-client \
+    dotnet run --project src/FraudRuleEngine.Api
 ```
 
-`Evaluate` is synchronous and performs no IO. Rules cannot query the database. Everything
-a rule might need is loaded once into `FraudEvaluationContext` before evaluation starts:
-the customer's recent transaction window, their rolling average, the merchants they have
-used before, and the relevant reference data.
-
-That constraint is the central design decision. It keeps evaluation latency predictable,
+Note the `env` prefix. A key containing a hyphen is not a valid shell variable name, so setting it
+as a bare `NAME=value` prefix fails with "command not found". Compose and Kubernetes take these
+names directly and need no such workaround.t constraint is the central design decision. It keeps evaluation latency predictable,
 avoids one database round trip per rule, and makes every rule test a plain in memory unit
 test with no mocking. It also over fetches, since a transaction caught by the amount
 threshold still pays for the history load. That tradeoff and the plan for tiering the
