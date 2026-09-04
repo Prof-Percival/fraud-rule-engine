@@ -1,7 +1,10 @@
+using FraudRuleEngine.Api.Configuration;
+using FraudRuleEngine.Api.Contracts;
 using FraudRuleEngine.Application.Abstractions;
 using FraudRuleEngine.Domain.Rules;
 using FraudRuleEngine.Domain.Scoring;
 using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.Extensions.Options;
 
 namespace FraudRuleEngine.Api.Endpoints;
 
@@ -124,7 +127,9 @@ internal static class AssessmentEndpoints
     /// database. Thresholds are not exposed yet because they are still compiled in; once they are
     /// configuration this is where they belong.
     /// </remarks>
-    private static Ok<IReadOnlyList<string>> ListRules(IReadOnlyList<IFraudRule> rules) =>
-        TypedResults.Ok<IReadOnlyList<string>>(
-            [.. rules.Select(rule => rule.Id.Value).OrderBy(id => id, StringComparer.Ordinal)]);
+    private static Ok<RuleCatalogueResponse> ListRules(
+        IReadOnlyList<IFraudRule> rules,
+        IOptions<FraudRuleSetOptions> options,
+        IRuleSetVersionProvider version) =>
+        TypedResults.Ok(RuleCatalogueMapper.Map(rules, options.Value, version.Current));
 }
