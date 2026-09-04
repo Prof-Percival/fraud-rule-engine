@@ -1,10 +1,12 @@
 services:
   db:
     image: postgres:17-alpine
+    # Defaults so the stack comes up with no setup, overridable from a .env file or the environment
+    # without editing a tracked file. The defaults are throwaway local values, not secrets.
     environment:
-      POSTGRES_USER: fraudengine
-      POSTGRES_PASSWORD: fraudengine
-      POSTGRES_DB: fraudengine
+      POSTGRES_USER: ${POSTGRES_USER:-fraudengine}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-fraudengine}
+      POSTGRES_DB: ${POSTGRES_DB:-fraudengine}
     ports:
       - "5432:5432"
     volumes:
@@ -28,7 +30,7 @@ services:
       # Development, so migrations are applied on boot and the OpenAPI document and its browsable
       # reference are served. Production applies migrations as a separate step.
       ASPNETCORE_ENVIRONMENT: Development
-      ConnectionStrings__Default: "Host=db;Port=5432;Database=fraudengine;Username=fraudengine;Password=fraudengine"
+      ConnectionStrings__Default: "Host=db;Port=5432;Database=${POSTGRES_DB:-fraudengine};Username=${POSTGRES_USER:-fraudengine};Password=${POSTGRES_PASSWORD:-fraudengine}"
       # Stated here rather than left to the shipped development settings, so it is visible where the
       # key comes from and can be replaced without rebuilding.
       ApiKey__Keys__dev-local-key-0123456789: local-development
@@ -45,7 +47,7 @@ services:
     environment:
       # Set, so the integration tests use this database rather than starting one through
       # Testcontainers, which is what happens when the variable is absent.
-      ConnectionStrings__Default: "Host=db;Port=5432;Database=fraudengine;Username=fraudengine;Password=fraudengine"
+      ConnectionStrings__Default: "Host=db;Port=5432;Database=${POSTGRES_DB:-fraudengine};Username=${POSTGRES_USER:-fraudengine};Password=${POSTGRES_PASSWORD:-fraudengine}"
     # Only runs when asked for by name, so `docker compose up` does not start it.
     profiles:
       - test
