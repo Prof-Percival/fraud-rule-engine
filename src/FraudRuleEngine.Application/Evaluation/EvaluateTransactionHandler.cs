@@ -1,4 +1,6 @@
+using System.Diagnostics;
 using FraudRuleEngine.Application.Abstractions;
+using FraudRuleEngine.Application.Diagnostics;
 using FraudRuleEngine.Domain.Assessments;
 using FraudRuleEngine.Domain.Rules;
 using FraudRuleEngine.Domain.Scoring;
@@ -27,6 +29,7 @@ public sealed class EvaluateTransactionHandler
     private readonly IFraudAssessmentStore _store;
     private readonly IRuleSetVersionProvider _ruleSetVersion;
     private readonly TimeProvider _timeProvider;
+    private readonly FraudMetrics _metrics;
 
     public EvaluateTransactionHandler(
         ICustomerContextSource contextSource,
@@ -34,7 +37,8 @@ public sealed class EvaluateTransactionHandler
         IRiskScoringPolicy scoringPolicy,
         IFraudAssessmentStore store,
         IRuleSetVersionProvider ruleSetVersion,
-        TimeProvider timeProvider)
+        TimeProvider timeProvider,
+        FraudMetrics metrics)
     {
         ArgumentNullException.ThrowIfNull(contextSource);
         ArgumentNullException.ThrowIfNull(evaluator);
@@ -42,6 +46,7 @@ public sealed class EvaluateTransactionHandler
         ArgumentNullException.ThrowIfNull(store);
         ArgumentNullException.ThrowIfNull(ruleSetVersion);
         ArgumentNullException.ThrowIfNull(timeProvider);
+        ArgumentNullException.ThrowIfNull(metrics);
 
         _contextSource = contextSource;
         _evaluator = evaluator;
@@ -49,6 +54,7 @@ public sealed class EvaluateTransactionHandler
         _store = store;
         _ruleSetVersion = ruleSetVersion;
         _timeProvider = timeProvider;
+        _metrics = metrics;
     }
 
     public async Task<FraudAssessment> HandleAsync(
@@ -56,6 +62,8 @@ public sealed class EvaluateTransactionHandler
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(transaction);
+
+        var start = Stopwatch.GetTimestamp();
 
         var context = await _contextSource.LoadAsync(transaction, cancellationToken).ConfigureAwait(false);
 
@@ -78,6 +86,8 @@ public sealed class EvaluateTransactionHandler
 
         if (result is SaveResult.Saved)
         {
+            // Recorded only for a genuine assessment, so a retried duplicate does not inflate the counts.
+            _metrics.RecordAssessment(decision, outcomes, Stopwatch.GetElapsedTime(start));
             return assessment;
         }
 

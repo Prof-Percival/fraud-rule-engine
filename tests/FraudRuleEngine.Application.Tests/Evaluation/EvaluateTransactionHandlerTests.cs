@@ -1,4 +1,5 @@
 using FraudRuleEngine.Application.Evaluation;
+using FraudRuleEngine.Application.Diagnostics;
 using FraudRuleEngine.Application.Tests.TestSupport;
 using FraudRuleEngine.Domain.Rules;
 using FraudRuleEngine.Domain.Scoring;
@@ -6,12 +7,15 @@ using FraudRuleEngine.Domain.Transactions;
 
 namespace FraudRuleEngine.Application.Tests.Evaluation;
 
-public sealed class EvaluateTransactionHandlerTests
+public sealed class EvaluateTransactionHandlerTests : IDisposable
 {
     private static readonly DateTimeOffset EvaluatedAt = new(2026, 9, 2, 19, 0, 0, TimeSpan.Zero);
 
     private readonly FakeCustomerContextSource _contextSource = new();
     private readonly FakeAssessmentStore _store = new();
+    private readonly FraudMetrics _metrics = new();
+
+    public void Dispose() => _metrics.Dispose();
 
     [Fact]
     public async Task Produces_an_assessment_carrying_the_transaction_identifiers()
@@ -115,7 +119,8 @@ public sealed class EvaluateTransactionHandlerTests
             StandardPolicy.Scoring(),
             new ThrowingAssessmentStore(),
             new FixedRuleSetVersion(),
-            new FrozenClock(EvaluatedAt));
+            new FrozenClock(EvaluatedAt),
+            _metrics);
 
         await Should.ThrowAsync<InvalidOperationException>(
             () => handler.HandleAsync(ATransaction.Valid(), TestContext.Current.CancellationToken));
@@ -139,7 +144,8 @@ public sealed class EvaluateTransactionHandlerTests
             StandardPolicy.Scoring(),
             _store,
             new FixedRuleSetVersion(),
-            new FrozenClock(EvaluatedAt));
+            new FrozenClock(EvaluatedAt),
+            _metrics);
 
         await handler.HandleAsync(transaction, TestContext.Current.CancellationToken);
 
@@ -174,22 +180,25 @@ public sealed class EvaluateTransactionHandlerTests
         var clock = new FrozenClock(EvaluatedAt);
 
         Should.Throw<ArgumentNullException>(() => new EvaluateTransactionHandler(
-            null!, evaluator, policy, _store, version, clock));
+            null!, evaluator, policy, _store, version, clock, _metrics));
 
         Should.Throw<ArgumentNullException>(() => new EvaluateTransactionHandler(
-            _contextSource, null!, policy, _store, version, clock));
+            _contextSource, null!, policy, _store, version, clock, _metrics));
 
         Should.Throw<ArgumentNullException>(() => new EvaluateTransactionHandler(
-            _contextSource, evaluator, null!, _store, version, clock));
+            _contextSource, evaluator, null!, _store, version, clock, _metrics));
 
         Should.Throw<ArgumentNullException>(() => new EvaluateTransactionHandler(
-            _contextSource, evaluator, policy, null!, version, clock));
+            _contextSource, evaluator, policy, null!, version, clock, _metrics));
 
         Should.Throw<ArgumentNullException>(() => new EvaluateTransactionHandler(
-            _contextSource, evaluator, policy, _store, null!, clock));
+            _contextSource, evaluator, policy, _store, null!, clock, _metrics));
 
         Should.Throw<ArgumentNullException>(() => new EvaluateTransactionHandler(
-            _contextSource, evaluator, policy, _store, version, null!));
+            _contextSource, evaluator, policy, _store, version, null!, _metrics));
+
+        Should.Throw<ArgumentNullException>(() => new EvaluateTransactionHandler(
+            _contextSource, evaluator, policy, _store, version, clock, null!));
     }
 
     private EvaluateTransactionHandler HandlerWith(params IFraudRule[] rules) =>
@@ -199,7 +208,8 @@ public sealed class EvaluateTransactionHandlerTests
             StandardPolicy.Scoring(),
             _store,
             new FixedRuleSetVersion(),
-            new FrozenClock(EvaluatedAt));
+            new FrozenClock(EvaluatedAt),
+            _metrics);
 
     private static StubRule RuleThatClears(string id = "Quiet") => new(id, null);
 
@@ -224,12 +234,15 @@ public sealed class EvaluateTransactionHandlerTests
     }
 }
 
-public sealed class IdempotentEvaluationTests
+public sealed class IdempotentEvaluationTests : IDisposable
 {
     private static readonly DateTimeOffset EvaluatedAt = new(2026, 9, 3, 12, 0, 0, TimeSpan.Zero);
 
     private readonly FakeCustomerContextSource _contextSource = new();
     private readonly FakeAssessmentStore _store = new();
+    private readonly FraudMetrics _metrics = new();
+
+    public void Dispose() => _metrics.Dispose();
 
     [Fact]
     public async Task Returns_the_original_verdict_when_the_event_was_already_assessed()
@@ -271,7 +284,8 @@ public sealed class IdempotentEvaluationTests
             StandardPolicy.Scoring(),
             new InconsistentAssessmentStore(),
             new FixedRuleSetVersion(),
-            new FrozenClock(EvaluatedAt));
+            new FrozenClock(EvaluatedAt),
+            _metrics);
 
         await Should.ThrowAsync<InvalidOperationException>(
             () => handler.HandleAsync(ATransaction.Valid(), TestContext.Current.CancellationToken));
@@ -284,7 +298,8 @@ public sealed class IdempotentEvaluationTests
             StandardPolicy.Scoring(),
             _store,
             new FixedRuleSetVersion(),
-            new FrozenClock(EvaluatedAt));
+            new FrozenClock(EvaluatedAt),
+            _metrics);
 
     private sealed class StubRule : IFraudRule
     {

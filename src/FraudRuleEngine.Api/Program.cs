@@ -7,8 +7,7 @@ using Scalar.AspNetCore;
 using Serilog;
 using Serilog.Formatting.Compact;
 
-// A bootstrap logger so anything thrown before the host is built is still recorded, rather than the
-// process dying with only a stack trace on stderr.
+// Bootstrap logger, so a failure before the host is built is still recorded.
 Serilog.Log.Logger = new LoggerConfiguration()
     .WriteTo.Console(formatProvider: CultureInfo.InvariantCulture)
     .CreateBootstrapLogger();
@@ -17,8 +16,7 @@ try
 {
     var builder = WebApplication.CreateBuilder(args);
 
-    // Machine readable JSON in production, so a log pipeline can parse it, and readable lines in
-    // development. Levels can be overridden through a Serilog section in configuration.
+    // JSON in production for a log pipeline, readable lines in development.
     builder.Services.AddSerilog((services, logger) =>
     {
         logger
@@ -61,13 +59,12 @@ try
 
     var app = builder.Build();
 
-    // One log line per request, carrying the correlation id, rather than the framework's several. The
-    // request body is never logged, so transaction identifiers and amounts stay out of the logs.
+    // One log line per request with the correlation id. The body is never logged, so identifiers and
+    // amounts stay out of the logs.
     app.UseSerilogRequestLogging(options =>
         options.EnrichDiagnosticContext = (diagnostic, httpContext) =>
             diagnostic.Set("CorrelationId", CorrelationId.For(httpContext)));
 
-    // Sets the correlation id on the response, so a caller can quote it and it can be found in the logs.
     app.Use(async (httpContext, next) =>
     {
         httpContext.Response.Headers["X-Correlation-Id"] = CorrelationId.For(httpContext);

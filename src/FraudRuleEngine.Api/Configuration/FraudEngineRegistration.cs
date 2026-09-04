@@ -1,4 +1,5 @@
 using FraudRuleEngine.Application.Abstractions;
+using FraudRuleEngine.Application.Diagnostics;
 using FraudRuleEngine.Application.Evaluation;
 using FraudRuleEngine.Domain.Rules;
 using FraudRuleEngine.Domain.Scoring;
@@ -38,6 +39,9 @@ internal static class FraudEngineRegistration
 
         services.AddSingleton<IRiskScoringPolicy>(provider =>
             FraudRuleSetFactory.Scoring(Options(provider).Scoring));
+
+        // One meter for the process lifetime.
+        services.AddSingleton<FraudMetrics>();
 
         // Scoped, because it depends on the scoped store and context source.
         services.AddScoped<EvaluateTransactionHandler>();
