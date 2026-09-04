@@ -55,6 +55,7 @@ try
     builder.Services.AddExceptionHandler<DomainExceptionHandler>();
     builder.Services.AddSingleton(TimeProvider.System);
     builder.Services.AddFraudRuleEngine(builder.Configuration);
+    builder.Services.AddFraudEngineSecurity(builder.Configuration);
     builder.Services.AddFraudEnginePersistence(connectionString);
     builder.Services.AddHostedService<RuleSetStartupLogger>();
 
