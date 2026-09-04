@@ -1,0 +1,40 @@
+name: build
+
+# Every push and every pull request, so a change is verified on a clean machine rather than only on
+# whichever laptop it was written on.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Cancel a superseded run rather than paying for a result nobody will read.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v6
+
+      # Pinned from global.json, so the runner uses the same SDK the solution is built with locally.
+      - uses: actions/setup-dotnet@v5
+        with:
+          global-json-file: global.json
+
+      - name: Restore
+        run: dotnet restore
+
+      # Release, because that is what ships. Warnings are already errors through Directory.Build.props,
+      # so an analyser complaint fails here rather than being scrolled past locally.
+      - name: Build
+        run: dotnet build --configuration Release --no-restore
+
+      - name: Test
+        run: dotnet test --configuration Release --no-build
