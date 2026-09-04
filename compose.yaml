@@ -1,0 +1,54 @@
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: fraudengine
+      POSTGRES_PASSWORD: fraudengine
+      POSTGRES_DB: fraudengine
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    # The api waits on this rather than on the container merely existing, because Postgres accepts
+    # connections a few seconds after the process starts.
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fraudengine -d fraudengine"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  api:
+    build:
+      context: .
+      target: final
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      # Development, so migrations are applied on boot and the OpenAPI document and its browsable
+      # reference are served. Production applies migrations as a separate step.
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__Default: "Host=db;Port=5432;Database=fraudengine;Username=fraudengine;Password=fraudengine"
+      # Stated here rather than left to the shipped development settings, so it is visible where the
+      # key comes from and can be replaced without rebuilding.
+      ApiKey__Keys__dev-local-key-0123456789: local-development
+    ports:
+      - "8080:8080"
+
+  tests:
+    build:
+      context: .
+      target: test
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      # Set, so the integration tests use this database rather than starting one through
+      # Testcontainers, which is what happens when the variable is absent.
+      ConnectionStrings__Default: "Host=db;Port=5432;Database=fraudengine;Username=fraudengine;Password=fraudengine"
+    # Only runs when asked for by name, so `docker compose up` does not start it.
+    profiles:
+      - test
+
+volumes:
+  pgdata:
