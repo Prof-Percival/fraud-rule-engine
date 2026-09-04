@@ -51,6 +51,7 @@ try
         ?? throw new InvalidOperationException(
             "ConnectionStrings:Default is not configured. The service cannot run without a database.");
 
+    builder.Services.AddFraudEngineTelemetry(builder.Configuration, builder.Environment);
     builder.Services.AddOpenApi();
     builder.Services.AddProblemDetails();
     builder.Services.AddExceptionHandler<DomainExceptionHandler>();
