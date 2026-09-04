@@ -84,15 +84,19 @@ try
     app.UseExceptionHandler();
     app.UseStatusCodePages();
 
+    app.UseAuthentication();
+    app.UseAuthorization();
+
     if (app.Environment.IsDevelopment())
     {
-        app.MapOpenApi();
+        app.MapOpenApi().AllowAnonymous();
 
         // Development only. Published API documentation hands out the shape of every route and payload.
         app.MapScalarApiReference(options => options
-            .WithTitle("Fraud rule engine")
-            .WithTheme(ScalarTheme.BluePlanet)
-            .AddDocument("v1"));
+                .WithTitle("Fraud rule engine")
+                .WithTheme(ScalarTheme.BluePlanet)
+                .AddDocument("v1"))
+            .AllowAnonymous();
 
         // Development only. An application that migrates on boot fights itself once it runs more than one
         // replica, so production applies migrations as a separate step.
