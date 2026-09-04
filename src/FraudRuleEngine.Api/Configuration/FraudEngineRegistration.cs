@@ -34,8 +34,13 @@ internal static class FraudEngineRegistration
         // the assessment was actually scored under.
         services.AddSingleton<IRuleSetVersionProvider, ConfiguredRuleSetVersionProvider>();
 
+        // Registered as a collection, not just handed to the evaluator, so anything reporting which rules
+        // are live reads the same instances that run. Otherwise the two can disagree.
+        services.AddSingleton<IReadOnlyList<IFraudRule>>(provider =>
+            FraudRuleSetFactory.Rules(Options(provider).Rules));
+
         services.AddSingleton(provider =>
-            new FraudRuleEvaluator(FraudRuleSetFactory.Rules(Options(provider).Rules)));
+            new FraudRuleEvaluator(provider.GetRequiredService<IReadOnlyList<IFraudRule>>()));
 
         services.AddSingleton<IRiskScoringPolicy>(provider =>
             FraudRuleSetFactory.Scoring(Options(provider).Scoring));

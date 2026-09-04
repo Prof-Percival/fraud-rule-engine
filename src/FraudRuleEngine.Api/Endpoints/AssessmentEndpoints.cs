@@ -124,7 +124,7 @@ internal static class AssessmentEndpoints
     /// database. Thresholds are not exposed yet because they are still compiled in; once they are
     /// configuration this is where they belong.
     /// </remarks>
-    private static Ok<IReadOnlyList<string>> ListRules(IEnumerable<IFraudRule> rules) =>
+    private static Ok<IReadOnlyList<string>> ListRules(IReadOnlyList<IFraudRule> rules) =>
         TypedResults.Ok<IReadOnlyList<string>>(
             [.. rules.Select(rule => rule.Id.Value).OrderBy(id => id, StringComparer.Ordinal)]);
 }
