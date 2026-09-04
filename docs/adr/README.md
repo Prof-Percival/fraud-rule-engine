@@ -24,6 +24,7 @@ Anything longer stops being written.
 | 0007 | PostgreSQL as the data store | Planned |
 | 0008 | Keyset pagination rather than offset | Planned |
 | [0009](0009-rule-thresholds-in-validated-configuration.md) | Rule thresholds live in validated configuration | Accepted |
+| [0010](0010-observability-with-serilog-and-opentelemetry.md) | Serilog for logs, OpenTelemetry for traces and metrics | Accepted |
 
 Records 0004 through 0008 are written as the corresponding work lands, in the sequence set
 out in `PLAN.md`. 0009 was not foreseen in that list: moving the thresholds into configuration
