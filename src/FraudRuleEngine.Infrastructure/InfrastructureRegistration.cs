@@ -33,6 +33,11 @@ public static class InfrastructureRegistration
         services.AddScoped<ICustomerContextSource, CustomerContextSource>();
         services.AddScoped<IAssessmentQueries, AssessmentQueries>();
 
+        // Tagged "ready", so the readiness probe reports unreachable database as not ready while the
+        // liveness probe stays up. Registered here because the context is internal to this layer.
+        services.AddHealthChecks()
+            .AddDbContextCheck<FraudEngineDbContext>("database", tags: ["ready"]);
+
         return services;
     }
 

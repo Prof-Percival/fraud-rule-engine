@@ -60,10 +60,16 @@ try
     var app = builder.Build();
 
     // One log line per request with the correlation id. The body is never logged, so identifiers and
-    // amounts stay out of the logs.
+    // amounts stay out of the logs. Health probes drop to Verbose so they do not drown the log.
     app.UseSerilogRequestLogging(options =>
+    {
+        options.GetLevel = (httpContext, _, _) =>
+            httpContext.Request.Path.StartsWithSegments("/health")
+                ? Serilog.Events.LogEventLevel.Verbose
+                : Serilog.Events.LogEventLevel.Information;
         options.EnrichDiagnosticContext = (diagnostic, httpContext) =>
-            diagnostic.Set("CorrelationId", CorrelationId.For(httpContext)));
+            diagnostic.Set("CorrelationId", CorrelationId.For(httpContext));
+    });
 
     app.Use(async (httpContext, next) =>
     {
@@ -90,6 +96,12 @@ try
         // replica, so production applies migrations as a separate step.
         await app.Services.ApplyMigrationsAsync();
     }
+
+    // Liveness answers "is the process up", so it runs no checks. Readiness runs the ready-tagged
+    // checks, so an unreachable database takes the service out of rotation without killing it.
+    app.MapHealthChecks("/health/live", new() { Predicate = _ => false }).AllowAnonymous();
+    app.MapHealthChecks("/health/ready", new() { Predicate = check => check.Tags.Contains("ready") })
+        .AllowAnonymous();
 
     app.MapTransactionEndpoints();
     app.MapAssessmentEndpoints();
