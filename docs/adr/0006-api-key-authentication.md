@@ -20,15 +20,23 @@ A caller needs one header, which is the whole integration cost. Nothing to negot
 
 Keys map to a client name rather than standing alone, which is what makes the rest work: traffic is attributed to a client in the logs, the rate limiter partitions on it, and one client's key can be revoked by removing a line of configuration without disturbing anyone else. The key itself is never logged, not even on a rejection, because a rejected key is often a valid key sent to the wrong environment.
 
-Comparison runs in fixed time against every configured key, so the time taken does not reveal how much of a key was correct.
+Keys are hashed once when the configuration is read and resolved by a single lookup, so a request costs one hash regardless of how many keys exist, and only the digests are held in memory.
 
 What an API key does not give is expiry, rotation without a deploy, scopes, or any proof that the caller is who the key says. A leaked key is valid until someone removes it, and every holder of a key is equally trusted. Those are real limitations and the reason this is recorded as a decision for this submission rather than a recommendation for production.
 
+## Keys identify services, not people
+
+An API key authenticates a calling application. It is the wrong instrument for a person, because it carries no individual identity, no expiry, and no way to withdraw one person's access without breaking everyone who shares the key.
+
+So an analyst never holds one. An analyst signs in to an internal tool with the bank's single sign on, and that tool calls this service with its own credential. The analyst's identity comes from their session and is what belongs in an audit record of who looked at whose assessment; the API key only says which application is calling. Any future endpoint that exposes something a named human should be accountable for needs that user identity carried through, not a shared key.
+
 ## What would change in production
 
-Keys would move to a secret manager rather than configuration, with rotation on a schedule and two valid keys during an overlap window. Per client scopes would separate a service that only reads assessments from one that submits transactions.
+Keys would come from a secret manager rather than configuration, issued when a service is onboarded and injected by the deployment platform, with rotation on a schedule and two keys valid during an overlap window so nothing breaks mid rotation.
 
-Beyond that the answer is workload identity rather than a shared secret: mutual TLS where the platform supports it, or OAuth2 client credentials against the bank's identity provider, which brings expiry, revocation and scopes without a shared secret sitting in configuration.
+Per client scopes would separate a service that only reads assessments from one that submits transactions, which a single shared key cannot express.
+
+Beyond that the answer is workload identity rather than a shared secret: mutual TLS where the platform supports it, or OAuth2 client credentials against the bank's identity provider, which brings expiry, revocation and scopes without a secret sitting in configuration.
 
 ## Alternatives
 
