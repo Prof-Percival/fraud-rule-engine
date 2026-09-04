@@ -1,0 +1,25 @@
+# Build output. Copying host artefacts into the image would mix a macOS build into a Linux one and
+# invalidate the layer cache on every build.
+**/bin
+**/obj
+
+# Local tooling and editor state
+.git
+.gitignore
+.vs
+.vscode
+.idea
+*.user
+*.suo
+.DS_Store
+
+# Docker's own files, which the build does not need inside the context
+Dockerfile
+.dockerignore
+compose.yaml
+
+# Documentation. None of it affects the build, and leaving it out keeps the context small.
+README.md
+PLAN.md
+docs
+.github
