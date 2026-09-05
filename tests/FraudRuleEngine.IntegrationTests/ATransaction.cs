@@ -7,6 +7,12 @@ namespace FraudRuleEngine.IntegrationTests;
 /// </summary>
 internal static class ATransaction
 {
+    /// <summary>
+    /// A customer nobody else is using. The collection shares one database, so a test that counts rows
+    /// needs a customer of its own or a neighbour's data changes the answer.
+    /// </summary>
+    public static string NewCustomerId() => $"CUST-{Guid.NewGuid():N}"[..20];
+
     public static Dictionary<string, object?> Valid(
         string? eventId = null,
         string? customerId = null,

@@ -40,6 +40,12 @@ internal sealed class FraudAssessmentStore : IFraudAssessmentStore
             // transaction, which is what makes the atomicity this port promises real.
             await _dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
+            // Nothing written is read back through the tracker, and a batch reuses one scoped context for
+            // every item. Holding the saved entities would make a repeated event id inside a batch fail on
+            // a tracking collision before reaching the database, which hides it from the duplicate path
+            // below, and would leave change detection walking every earlier item on each save.
+            _dbContext.ChangeTracker.Clear();
+
             return SaveResult.Saved;
         }
         catch (DbUpdateException exception)
