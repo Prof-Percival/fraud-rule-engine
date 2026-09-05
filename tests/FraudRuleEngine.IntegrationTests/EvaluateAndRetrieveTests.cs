@@ -37,6 +37,11 @@ public sealed class EvaluateAndRetrieveTests(FraudEngineFixture fixture)
 
         // The read model names it "id" where the evaluate response names it "assessmentId".
         stored.GetProperty("id").GetGuid().ShouldBe(id);
+
+        // Exactly, not approximately. The response must not advertise a precision the database cannot
+        // keep, or reading an assessment back contradicts the answer already given for it.
+        stored.GetProperty("evaluatedAtUtc").GetDateTimeOffset()
+            .ShouldBe(assessment.GetProperty("evaluatedAt").GetDateTimeOffset());
         stored.GetProperty("riskScore").GetInt32().ShouldBe(assessment.GetProperty("riskScore").GetInt32());
         stored.GetProperty("decision").GetString().ShouldBe(assessment.GetProperty("decision").GetString());
         stored.GetProperty("ruleSetVersion").GetString()

@@ -68,9 +68,16 @@ public sealed record FraudAssessment
         RiskScore = riskScore;
         Decision = decision;
         RuleSetVersion = ruleSetVersion;
-        EvaluatedAt = evaluatedAt;
+
+        // Recorded to the microsecond, which is the finest an assessment is kept at. The clock offers
+        // more than that, and reporting a precision the record cannot hold makes the verdict returned
+        // for a repeat delivery differ from the one first reported, on a field that did not change.
+        EvaluatedAt = ToRecordedPrecision(evaluatedAt);
         _ruleOutcomes = [.. ruleOutcomes];
     }
+
+    private static DateTimeOffset ToRecordedPrecision(DateTimeOffset moment) =>
+        new(moment.Ticks - (moment.Ticks % TimeSpan.TicksPerMicrosecond), moment.Offset);
 
     private FraudAssessment(
         AssessmentId id,

@@ -171,6 +171,27 @@ public sealed class FraudAssessmentTests
     }
 
     /// <summary>A valid assessment, for tests that vary one thing about it.</summary>
+    [Fact]
+    public void Records_the_moment_to_the_microsecond()
+    {
+        // The clock resolves finer than an assessment is kept at, so anything below a microsecond is
+        // dropped on the way in rather than being reported once and never seen again.
+        var withStrayTicks = new DateTimeOffset(2026, 9, 2, 19, 0, 0, TimeSpan.Zero)
+            .AddTicks((TimeSpan.TicksPerMicrosecond * 3) + 7);
+
+        var assessment = new FraudAssessment(
+            AssessmentId.New(),
+            TransactionEventBuilder.AValidEvent().Build(),
+            RiskScore.Zero,
+            FraudDecision.Approve,
+            [AnOutcome],
+            RuleSetVersion.From("v1"),
+            withStrayTicks);
+
+        assessment.EvaluatedAt.ShouldBe(withStrayTicks.AddTicks(-7));
+        (assessment.EvaluatedAt.Ticks % TimeSpan.TicksPerMicrosecond).ShouldBe(0);
+    }
+
     private static FraudAssessment An(
         TransactionEvent? transaction = null,
         RiskScore riskScore = default,
