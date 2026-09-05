@@ -1,0 +1,14 @@
+{
+  "solution": {
+    "path": "FraudRuleEngine.sln",
+    "projects": [
+      "src\\FraudRuleEngine.Domain\\FraudRuleEngine.Domain.csproj",
+      "src\\FraudRuleEngine.Application\\FraudRuleEngine.Application.csproj",
+      "src\\FraudRuleEngine.Infrastructure\\FraudRuleEngine.Infrastructure.csproj",
+      "src\\FraudRuleEngine.Api\\FraudRuleEngine.Api.csproj",
+      "tests\\FraudRuleEngine.Domain.Tests\\FraudRuleEngine.Domain.Tests.csproj",
+      "tests\\FraudRuleEngine.Application.Tests\\FraudRuleEngine.Application.Tests.csproj",
+      "tests\\FraudRuleEngine.Api.Tests\\FraudRuleEngine.Api.Tests.csproj"
+    ]
+  }
+}
