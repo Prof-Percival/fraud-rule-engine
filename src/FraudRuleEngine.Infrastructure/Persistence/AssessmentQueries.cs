@@ -58,14 +58,14 @@ internal sealed class AssessmentQueries : IAssessmentQueries
             .Take(pageSize + 1)
             .Select(assessment => new AssessmentView
             {
-                Id = assessment.Id,
+                AssessmentId = assessment.Id,
                 EventId = assessment.EventId,
                 TransactionId = assessment.TransactionId,
                 CustomerId = assessment.CustomerId,
                 RiskScore = assessment.RiskScore,
                 Decision = assessment.Decision,
                 RuleSetVersion = assessment.RuleSetVersion,
-                EvaluatedAtUtc = assessment.EvaluatedAtUtc,
+                EvaluatedAt = assessment.EvaluatedAtUtc,
             })
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
@@ -77,7 +77,7 @@ internal sealed class AssessmentQueries : IAssessmentQueries
             items.RemoveAt(items.Count - 1);
 
             var last = items[^1];
-            nextCursor = AssessmentCursor.From(last.EvaluatedAtUtc, last.Id).Encode();
+            nextCursor = AssessmentCursor.From(last.EvaluatedAt, last.AssessmentId).Encode();
         }
 
         // Outcomes are left off the list view: eight rows per assessment is two hundred nobody reads on
@@ -165,7 +165,7 @@ internal sealed class AssessmentQueries : IAssessmentQueries
             .Select(outcome => new RuleOutcomeView
             {
                 RuleId = outcome.RuleId,
-                IsTriggered = outcome.IsTriggered,
+                Triggered = outcome.IsTriggered,
                 Severity = outcome.Severity,
                 Reason = outcome.Reason,
             });
@@ -173,14 +173,14 @@ internal sealed class AssessmentQueries : IAssessmentQueries
     private static AssessmentView ToView(StoredAssessment stored, IReadOnlyList<RuleOutcomeView> outcomes) =>
         new()
         {
-            Id = stored.Id,
+            AssessmentId = stored.Id,
             EventId = stored.EventId,
             TransactionId = stored.TransactionId,
             CustomerId = stored.CustomerId,
             RiskScore = stored.RiskScore,
             Decision = stored.Decision,
             RuleSetVersion = stored.RuleSetVersion,
-            EvaluatedAtUtc = stored.EvaluatedAtUtc,
+            EvaluatedAt = stored.EvaluatedAtUtc,
             RuleOutcomes = outcomes,
         };
 }

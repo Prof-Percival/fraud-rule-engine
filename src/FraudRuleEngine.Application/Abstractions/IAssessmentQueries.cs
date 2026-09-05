@@ -71,7 +71,7 @@ public sealed record AssessmentPage
 
 public sealed record AssessmentView
 {
-    public required Guid Id { get; init; }
+    public required Guid AssessmentId { get; init; }
 
     public required string EventId { get; init; }
 
@@ -85,7 +85,7 @@ public sealed record AssessmentView
 
     public required string RuleSetVersion { get; init; }
 
-    public required DateTimeOffset EvaluatedAtUtc { get; init; }
+    public required DateTimeOffset EvaluatedAt { get; init; }
 
     public IReadOnlyList<RuleOutcomeView> RuleOutcomes { get; init; } = [];
 }
@@ -94,7 +94,7 @@ public sealed record RuleOutcomeView
 {
     public required string RuleId { get; init; }
 
-    public required bool IsTriggered { get; init; }
+    public required bool Triggered { get; init; }
 
     public required string Severity { get; init; }
 

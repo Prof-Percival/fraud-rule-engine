@@ -37,8 +37,8 @@ public sealed class PaginationTests(FraudEngineFixture fixture)
 
             foreach (var item in items)
             {
-                seen.Add(item.GetProperty("id").GetGuid());
-                timestamps.Add(item.GetProperty("evaluatedAtUtc").GetDateTimeOffset());
+                seen.Add(item.GetProperty("assessmentId").GetGuid());
+                timestamps.Add(item.GetProperty("evaluatedAt").GetDateTimeOffset());
             }
 
             cursor = page.GetProperty("nextCursor").GetString();
