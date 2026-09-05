@@ -20,6 +20,23 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
+    # The integration tests take a database from ConnectionStrings__Default when it is set, which is this
+    # path and the compose path. Left unset they start one themselves, which is the path from an editor.
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: fraudengine
+          POSTGRES_USER: fraudengine
+          POSTGRES_PASSWORD: fraudengine
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready --username fraudengine --dbname fraudengine"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
     steps:
       - uses: actions/checkout@v6
 
@@ -36,10 +53,18 @@ jobs:
       - name: Build
         run: dotnet build --configuration Release --no-restore
 
-      - name: Test
-        run: dotnet test --configuration Release --no-build
+      # Separately from the integration tests, so a red run says which kind broke without being read.
+      - name: Unit tests
+        run: dotnet test UnitTests.slnf --configuration Release --no-build
 
-      # The brief asks for a runnable container, so a change that breaks the image should fail here
-      # rather than being discovered by whoever tries to run it.
+      - name: Integration tests
+        env:
+          ConnectionStrings__Default: "Host=localhost;Port=5432;Database=fraudengine;Username=fraudengine;Password=fraudengine"
+        run: dotnet test tests/FraudRuleEngine.IntegrationTests --configuration Release --no-build
+
+      # The test stage as well as the runtime one. It is not on the path to the runtime image, so
+      # building only that would leave the tests the image runs unverified.
       - name: Build the container image
-        run: docker build --target final --tag fraud-rule-engine:ci .
+        run: |
+          docker build --target test --tag fraud-rule-engine:ci-tests .
+          docker build --target final --tag fraud-rule-engine:ci .
