@@ -59,12 +59,7 @@ internal static class AssessmentEndpoints
         {
             if (!AssessmentCursor.TryDecode(cursor, out var decoded))
             {
-                return TypedResults.ValidationProblem(
-                    new Dictionary<string, string[]>(StringComparer.Ordinal)
-                    {
-                        ["cursor"] = ["Not a valid cursor. Use the nextCursor from a previous response."],
-                    },
-                    title: "The query could not be accepted.");
+                return RejectCursor();
             }
 
             after = decoded;
@@ -86,6 +81,14 @@ internal static class AssessmentEndpoints
         return TypedResults.Ok(result);
     }
 
+    private static ValidationProblem RejectCursor() =>
+        TypedResults.ValidationProblem(
+            new Dictionary<string, string[]>(StringComparer.Ordinal)
+            {
+                ["cursor"] = ["Not a valid cursor. Use the nextCursor from a previous response."],
+            },
+            title: "The query could not be accepted.");
+
     private static async Task<Ok<AssessmentSummary>> SummariseAsync(
         IAssessmentQueries queries,
         CancellationToken cancellationToken) =>
@@ -101,14 +104,26 @@ internal static class AssessmentEndpoints
         return assessment is null ? TypedResults.NotFound() : TypedResults.Ok(assessment);
     }
 
-    private static async Task<Ok<AssessmentPage>> ForCustomerAsync(
+    private static async Task<Results<Ok<AssessmentPage>, ValidationProblem>> ForCustomerAsync(
         string customerId,
         IAssessmentQueries queries,
         CancellationToken cancellationToken,
         string? cursor = null,
         int pageSize = AssessmentQuery.DefaultPageSize)
     {
-        AssessmentCursor? after = AssessmentCursor.TryDecode(cursor, out var decoded) ? decoded : null;
+        AssessmentCursor? after = null;
+
+        if (cursor is not null)
+        {
+            // Falling back to the first page would leave a caller holding a damaged cursor reading the
+            // same records forever instead of being told to stop.
+            if (!AssessmentCursor.TryDecode(cursor, out var decoded))
+            {
+                return RejectCursor();
+            }
+
+            after = decoded;
+        }
 
         // No 404 for a customer with no assessments. An empty page is the correct answer: this service
         // has no customer records of its own, so it cannot tell an unknown customer from a quiet one.
