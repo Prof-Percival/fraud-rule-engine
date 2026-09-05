@@ -21,6 +21,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FraudRuleEngine.Application
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FraudRuleEngine.Api.Tests", "tests\FraudRuleEngine.Api.Tests\FraudRuleEngine.Api.Tests.csproj", "{26061E3C-FA3F-466D-8FD5-4D759072724F}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FraudRuleEngine.IntegrationTests", "tests\FraudRuleEngine.IntegrationTests\FraudRuleEngine.IntegrationTests.csproj", "{61C28413-7169-4004-A33A-69D1587742C9}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -115,6 +117,18 @@ Global
 		{26061E3C-FA3F-466D-8FD5-4D759072724F}.Release|x64.Build.0 = Release|Any CPU
 		{26061E3C-FA3F-466D-8FD5-4D759072724F}.Release|x86.ActiveCfg = Release|Any CPU
 		{26061E3C-FA3F-466D-8FD5-4D759072724F}.Release|x86.Build.0 = Release|Any CPU
+		{61C28413-7169-4004-A33A-69D1587742C9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{61C28413-7169-4004-A33A-69D1587742C9}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{61C28413-7169-4004-A33A-69D1587742C9}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{61C28413-7169-4004-A33A-69D1587742C9}.Debug|x64.Build.0 = Debug|Any CPU
+		{61C28413-7169-4004-A33A-69D1587742C9}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{61C28413-7169-4004-A33A-69D1587742C9}.Debug|x86.Build.0 = Debug|Any CPU
+		{61C28413-7169-4004-A33A-69D1587742C9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{61C28413-7169-4004-A33A-69D1587742C9}.Release|Any CPU.Build.0 = Release|Any CPU
+		{61C28413-7169-4004-A33A-69D1587742C9}.Release|x64.ActiveCfg = Release|Any CPU
+		{61C28413-7169-4004-A33A-69D1587742C9}.Release|x64.Build.0 = Release|Any CPU
+		{61C28413-7169-4004-A33A-69D1587742C9}.Release|x86.ActiveCfg = Release|Any CPU
+		{61C28413-7169-4004-A33A-69D1587742C9}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -127,5 +141,6 @@ Global
 		{579C9C7A-14EB-4190-8554-85C65FF541E6} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
 		{F8898CD2-54F5-48B7-88C4-9B2E7D00ED92} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
 		{26061E3C-FA3F-466D-8FD5-4D759072724F} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
+		{61C28413-7169-4004-A33A-69D1587742C9} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
 	EndGlobalSection
 EndGlobal

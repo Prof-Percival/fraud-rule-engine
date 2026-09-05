@@ -2,6 +2,8 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="FraudRuleEngine.Api.Tests" />
+    <!-- WebApplicationFactory needs to see the implicit Program class of a top level program. -->
+    <InternalsVisibleTo Include="FraudRuleEngine.IntegrationTests" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
