@@ -11,18 +11,18 @@ namespace FraudRuleEngine.Infrastructure.Persistence;
 /// Without this, <c>dotnet ef</c> starts the API host to find the context, which means design time work
 /// depends on configuration and the whole dependency graph resolving. That fails for unrelated reasons
 /// and is confusing when it does.
-///
-/// <para>
-/// The connection string here is never used to connect. Migrations are generated from the model, and the
-/// provider only needs to know which SQL dialect to emit.
-/// </para>
 /// </remarks>
 internal sealed class DesignTimeDbContextFactory : IDesignTimeDbContextFactory<FraudEngineDbContext>
 {
+    private const string ModelOnlyPlaceholder =
+        "Host=localhost;Database=design_time_only;Username=none;Password=none";
+
     public FraudEngineDbContext CreateDbContext(string[] args)
     {
+        var configured = Environment.GetEnvironmentVariable("ConnectionStrings__Default");
+
         var options = new DbContextOptionsBuilder<FraudEngineDbContext>()
-            .UseNpgsql("Host=localhost;Database=design_time_only;Username=none;Password=none")
+            .UseNpgsql(string.IsNullOrWhiteSpace(configured) ? ModelOnlyPlaceholder : configured)
             .UseSnakeCaseNamingConvention()
             .Options;
 
