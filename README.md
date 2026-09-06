@@ -330,8 +330,13 @@ service called `postgresql-x64-17` and shows up in `services.msc`.
 Unit tests need nothing beyond the SDK:
 
 ```bash
-dotnet test --filter Category!=Integration
+dotnet test UnitTests.slnf
 ```
+
+`UnitTests.slnf` is a solution filter holding everything except the integration test project. It
+selects by project rather than by test trait because a filter that matches nothing in a project
+counts as a failed run, so excluding the integration tests with `--filter` reports failure on a
+suite that entirely passed.
 
 The integration tests need a PostgreSQL instance and will use the one from
 `ConnectionStrings__Default` if it is set. Without that variable they try to start their own
@@ -369,19 +374,29 @@ docker compose --profile test run --rm tests
 That runs unit and integration tests against the compose PostgreSQL instance and exits with
 the test result as its exit code, so it works unchanged in CI.
 
-Unit tests only, no database and no compose stack:
+Unit tests only, no database and no compose stack. Building this stage runs them, and a failure
+fails the build:
 
 ```bash
-docker build --target test --build-arg TEST_FILTER=Category!=Integration .
+docker build --target test .
 ```
+
+It runs `UnitTests.slnf`, because a build has no database and no way to reach one. A `TEST_TARGET`
+build argument can point it at another target, but the integration tests cannot pass here whatever
+it is set to, so use the compose command above to run everything.
 
 With the SDK installed locally:
 
 ```bash
-dotnet test                                                    # everything
-dotnet test --filter Category!=Integration                     # unit only
-dotnet test --collect:"XPlat Code Coverage"                     # with coverage
+dotnet test                                                     # everything
+dotnet test UnitTests.slnf                                      # unit only
+dotnet test tests/FraudRuleEngine.IntegrationTests               # integration only
+dotnet test UnitTests.slnf --coverage                            # with coverage
 ```
+
+Coverage comes from the test platform's own collector, so it is `--coverage` rather than the
+`--collect` argument the older runner took. Add `--coverage-output <path>` to choose where the
+Cobertura file lands.
 
 ### How the integration tests get a database
 
