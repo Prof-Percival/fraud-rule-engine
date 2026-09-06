@@ -1,0 +1,242 @@
+# Fraud rule engine, every endpoint.
+#
+# Runs in Visual Studio, Rider, and the VS Code REST Client extension. Send a request with the
+# link or gutter arrow the editor puts above it.
+#
+# The stack must be up: docker compose up -d --build
+#
+# Event identifiers here are fixed rather than generated, so the collection can be run more than
+# once and the records stay findable. That also means a second send of the same request returns
+# the verdict the first one produced, which is the idempotency behaviour rather than a mistake.
+
+@host = http://localhost:8080
+@apiKey = dev-local-key-0123456789
+@customerId = CUST-4471
+
+### Liveness. No key: an orchestrator does not have one.
+GET {{host}}/health/live
+
+### Readiness. Reports the database, so this is the one that turns 503 when it is unreachable.
+GET {{host}}/health/ready
+
+### Which rules are live, on what thresholds, and the weights behind a score.
+GET {{host}}/api/v1/rules
+X-Api-Key: {{apiKey}}
+
+### Approve. An ordinary purchase, in the afternoon, nothing to say about it.
+POST {{host}}/api/v1/transactions/evaluate
+Content-Type: application/json
+X-Api-Key: {{apiKey}}
+
+{
+  "eventId": "req-approve-0001",
+  "transactionId": "TXN-000101",
+  "customerId": "{{customerId}}",
+  "accountId": "ACC-9920",
+  "amount": 240.00,
+  "currency": "ZAR",
+  "category": "Groceries",
+  "channel": "ChipAndPin",
+  "merchantId": "MERCH-1180",
+  "merchantName": "Checkers Sandton",
+  "countryCode": "ZA",
+  "occurredAt": "2026-09-01T14:30:00+02:00"
+}
+
+### Review. A large cash withdrawal at 02:14, which is a high value hit plus an unusual hour.
+POST {{host}}/api/v1/transactions/evaluate
+Content-Type: application/json
+X-Api-Key: {{apiKey}}
+
+{
+  "eventId": "req-review-0001",
+  "transactionId": "TXN-000123",
+  "customerId": "{{customerId}}",
+  "accountId": "ACC-9920",
+  "amount": 48500.00,
+  "currency": "ZAR",
+  "category": "CashWithdrawal",
+  "channel": "Atm",
+  "merchantId": "MERCH-771",
+  "merchantName": "ATM Sandton City",
+  "countryCode": "ZA",
+  "occurredAt": "2026-09-02T02:14:00+02:00"
+}
+
+### Review on one rule. A deny listed merchant reaches review by itself but cannot decline alone.
+POST {{host}}/api/v1/transactions/evaluate
+Content-Type: application/json
+X-Api-Key: {{apiKey}}
+
+{
+  "eventId": "req-review-0002",
+  "transactionId": "TXN-000124",
+  "customerId": "{{customerId}}",
+  "accountId": "ACC-9920",
+  "amount": 300.00,
+  "currency": "ZAR",
+  "category": "Groceries",
+  "channel": "Ecommerce",
+  "merchantId": "MERCH-DENY-0001",
+  "merchantName": "Blocked Merchant",
+  "countryCode": "ZA",
+  "occurredAt": "2026-09-03T11:05:00+02:00"
+}
+
+### Decline. Two corroborating signals: a deny listed merchant and a high value amount.
+POST {{host}}/api/v1/transactions/evaluate
+Content-Type: application/json
+X-Api-Key: {{apiKey}}
+
+{
+  "eventId": "req-decline-0001",
+  "transactionId": "TXN-000125",
+  "customerId": "{{customerId}}",
+  "accountId": "ACC-9920",
+  "amount": 60000.00,
+  "currency": "ZAR",
+  "category": "Retail",
+  "channel": "Ecommerce",
+  "merchantId": "MERCH-DENY-0003",
+  "merchantName": "Blocked Merchant",
+  "countryCode": "ZA",
+  "occurredAt": "2026-09-04T13:40:00+02:00"
+}
+
+### Repeat delivery. Same event as the decline above with the amount changed, which a queue will
+# eventually do. Returns the original assessment, same identifier and same time, not a new one.
+POST {{host}}/api/v1/transactions/evaluate
+Content-Type: application/json
+X-Api-Key: {{apiKey}}
+
+{
+  "eventId": "req-decline-0001",
+  "transactionId": "TXN-000125",
+  "customerId": "{{customerId}}",
+  "accountId": "ACC-9920",
+  "amount": 25.00,
+  "currency": "ZAR",
+  "category": "Retail",
+  "channel": "Ecommerce",
+  "merchantId": "MERCH-DENY-0003",
+  "merchantName": "Blocked Merchant",
+  "countryCode": "ZA",
+  "occurredAt": "2026-09-04T13:40:00+02:00"
+}
+
+### Rejected input. Every problem at once rather than one per round trip.
+POST {{host}}/api/v1/transactions/evaluate
+Content-Type: application/json
+X-Api-Key: {{apiKey}}
+
+{}
+
+### A batch where one item is bad. The bad one is refused by position and the rest are kept.
+POST {{host}}/api/v1/transactions/batch
+Content-Type: application/json
+X-Api-Key: {{apiKey}}
+
+{
+  "transactions": [
+    {
+      "eventId": "req-batch-0001",
+      "transactionId": "TXN-000201",
+      "customerId": "CUST-8890",
+      "accountId": "ACC-3311",
+      "amount": 1250.00,
+      "currency": "ZAR",
+      "category": "Retail",
+      "channel": "ChipAndPin",
+      "merchantId": "MERCH-4410",
+      "merchantName": "Woolworths Rosebank",
+      "countryCode": "ZA",
+      "occurredAt": "2026-09-05T10:15:00+02:00"
+    },
+    {
+      "eventId": "req-batch-0002",
+      "transactionId": "TXN-000202",
+      "customerId": "CUST-8890",
+      "accountId": "ACC-3311",
+      "amount": -40.00,
+      "currency": "ZAR",
+      "category": "Retail",
+      "channel": "ChipAndPin",
+      "merchantId": "MERCH-4410",
+      "merchantName": "Woolworths Rosebank",
+      "countryCode": "ZA",
+      "occurredAt": "2026-09-05T10:20:00+02:00"
+    },
+    {
+      "eventId": "req-batch-0003",
+      "transactionId": "TXN-000203",
+      "customerId": "CUST-8890",
+      "accountId": "ACC-3311",
+      "amount": 31000.00,
+      "currency": "ZAR",
+      "category": "Cryptocurrency",
+      "channel": "Ecommerce",
+      "merchantId": "MERCH-7720",
+      "merchantName": "Coin Exchange",
+      "countryCode": "ZA",
+      "occurredAt": "2026-09-05T10:25:00+02:00"
+    }
+  ]
+}
+
+### An empty batch is refused whole.
+POST {{host}}/api/v1/transactions/batch
+Content-Type: application/json
+X-Api-Key: {{apiKey}}
+
+{
+  "transactions": []
+}
+
+### Stored assessments, newest first.
+GET {{host}}/api/v1/assessments
+X-Api-Key: {{apiKey}}
+
+### Filtered. Anything that went to review scoring at least sixty.
+GET {{host}}/api/v1/assessments?decision=Review&minScore=60&pageSize=25
+X-Api-Key: {{apiKey}}
+
+### Filtered by date. Both bounds are inclusive and take an offset.
+GET {{host}}/api/v1/assessments?from=2026-09-01T00:00:00Z&to=2026-09-30T23:59:59Z
+X-Api-Key: {{apiKey}}
+
+### First page of two, to get a cursor. Copy nextCursor from the response into the variable below.
+GET {{host}}/api/v1/assessments?pageSize=2
+X-Api-Key: {{apiKey}}
+
+### The page after that one. Refused until a real cursor is pasted in, because the service will not
+# accept a cursor it did not issue: silently starting again would page the same records forever.
+@cursor = paste-nextCursor-here
+
+GET {{host}}/api/v1/assessments?pageSize=2&cursor={{cursor}}
+X-Api-Key: {{apiKey}}
+
+### Counts by decision, and the rules firing most often.
+GET {{host}}/api/v1/assessments/summary
+X-Api-Key: {{apiKey}}
+
+### One customer, newest first. Paged the same way.
+GET {{host}}/api/v1/customers/{{customerId}}/assessments?pageSize=5
+X-Api-Key: {{apiKey}}
+
+### A customer with nothing on file. An empty page, not a 404: this service holds no customer
+# records of its own, so it cannot tell an unknown customer from a quiet one.
+GET {{host}}/api/v1/customers/CUST-NO-SUCH-0001/assessments
+X-Api-Key: {{apiKey}}
+
+### One assessment with every rule outcome. Copy an assessmentId from any response above.
+@assessmentId = paste-assessmentId-here
+
+GET {{host}}/api/v1/assessments/{{assessmentId}}
+X-Api-Key: {{apiKey}}
+
+### No key. Refused.
+GET {{host}}/api/v1/assessments
+
+### A key that was never issued. Refused the same way, and the key is not repeated back.
+GET {{host}}/api/v1/assessments
+X-Api-Key: not-a-key-that-exists-0001
