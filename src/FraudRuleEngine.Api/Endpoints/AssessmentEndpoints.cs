@@ -138,9 +138,8 @@ internal static class AssessmentEndpoints
     /// Lists the registered rules.
     /// </summary>
     /// <remarks>
-    /// Exists so somebody operating this can see which rules are live without reading the source or the
-    /// database. Thresholds are not exposed yet because they are still compiled in; once they are
-    /// configuration this is where they belong.
+    /// Exists so somebody operating this can see which rules are live, and on what numbers, without
+    /// reading the source or the database.
     /// </remarks>
     private static Ok<RuleCatalogueResponse> ListRules(
         IReadOnlyList<IFraudRule> rules,
