@@ -159,6 +159,29 @@ source only change does not invalidate the restore layer.
 
 ## Running
 
+### Where the database lives
+
+The service reaches its database through one connection string and has no opinion beyond that, so where
+it runs is a choice made at startup rather than a property of the design.
+
+| You want | Command | Database used |
+|---|---|---|
+| Nothing installed, one command | `docker compose up -d --build` | PostgreSQL in a container, data in a named volume |
+| The schema in a server you already run | `docker compose --profile host-db up -d --build api-host-db` | That server, created on first start if absent |
+| The service on the host, not in a container | `dotnet run --project src/FraudRuleEngine.Api` | Whatever `ConnectionStrings__Default` points at |
+
+The default is the container because a reviewer should not have to install PostgreSQL, create a role and
+match a version before the thing will start, and because it gives everyone the same server rather than
+whatever happens to be on the machine.
+
+Worth being precise about one thing: the data is not in the container. It is in a named volume, and the
+container in front of it is disposable. Removing and recreating the container leaves the data where it
+was, which is why `docker compose down` keeps it and only `down -v` does not.
+
+None of this is how the database runs in production. There it is a managed service with backups, failover
+and an upgrade path, and the only thing the application knows about it is the connection string it was
+given. See Deploying below.
+
 ### With Docker, which is the supported path
 
 ```bash
