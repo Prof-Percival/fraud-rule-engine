@@ -671,11 +671,40 @@ changed value applies to a caller already sending rather than only to one that t
 means a client mid way through being throttled gets a fresh allowance the moment its number changes,
 which is the quickest way to release one during development.
 
-That only works for configuration sources that support reloading. A JSON file does, including a
-Kubernetes ConfigMap or Secret mounted as a file, since the platform updates the file in place.
-**Environment variables are read once at startup and cannot change**, so a deployment that wants to
-retune a client without a restart has to supply that section as a mounted file rather than as
-`ApiKey__Clients__...`.
+What the process can see change is the part worth being precise about, because it is not the same as what
+you can edit:
+
+| Source | Picked up without a restart? |
+|---|---|
+| A file the platform rewrites in place, which is how a ConfigMap or Secret mounted into a pod behaves | yes |
+| A file inside a running container, replaced from outside it | yes |
+| A file baked into an image, edited in the repository | no, that file is not the one being read |
+| Environment variables | no, read once at startup |
+
+So a deployment that wants to retune a client without restarting supplies that section as a mounted file
+rather than as `ApiKey__Clients__...`.
+
+Against the compose stack, the settings live inside the image, so editing the repository copy changes
+nothing until that file reaches the container. Copy it in and the running service picks it up:
+
+```bash
+docker compose cp src/FraudRuleEngine.Api/appsettings.Development.json \
+  api:/app/appsettings.Development.json
+```
+
+A few seconds later the new allowance is in force, with no restart and no rebuild. That command works the
+same from PowerShell, a terminal or an IDE task, and it is worth preferring over a bind mount of the file:
+Docker Desktop does not reliably propagate host file changes into a container, and an editor that saves by
+renaming a new file over the old one defeats a single file mount entirely, since the mount is bound to the
+original file rather than to its name.
+
+`docker compose restart api` does **not** help on its own. It restarts the process against the image it
+already has, so it re-reads the same unchanged file.
+
+A value that fails validation, a zero allowance for instance, does not crash the service but does make
+requests fail while it is wrong, health probes included, with the offending setting named in the log. It
+recovers by itself once the value is corrected. Startup validation is what stops such a value being
+deployed in the first place, since the same number in a fresh boot refuses to start at all.
 
 The development keys are in `appsettings.Development.json`, deliberately spanning a range of allowances
 so throttling can be exercised without editing anything:
