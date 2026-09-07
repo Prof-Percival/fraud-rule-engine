@@ -23,6 +23,11 @@ That compiles the service, starts PostgreSQL, applies migrations and serves the 
 <http://localhost:8080>. First build pulls the base images and takes a few minutes.
 Subsequent builds are cached.
 
+If PostgreSQL is already installed on this machine it holds port 5432, and the stack cannot publish the
+database on a port something else owns. Put `POSTGRES_PORT=55432` in a `.env` file next to
+`compose.yaml` before the first run and the two stay out of each other's way. Nothing inside the stack
+is affected, because the API reaches the database by service name rather than through the host.
+
 Check it came up:
 
 ```bash
