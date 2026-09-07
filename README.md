@@ -296,7 +296,13 @@ as a separate step, because an application that migrates its own schema on boot 
 itself the moment it runs more than one replica.
 
 OpenAPI document is at <http://localhost:8080/openapi/v1.json> and the browsable UI at
-<http://localhost:8080/scalar/v1>.
+<http://localhost:8080/scalar/v1>. Outside production <http://localhost:8080> goes to the reference as
+well, so there is no versioned path to remember.
+
+Both exist in development only, so in production they are not served and the root is not a redirect.
+Note also that an unauthenticated request to a path that does not exist comes back as 401 rather than
+404, because authorization is a fallback policy and applies to unmatched routes too. A caller without a
+key cannot use the difference to work out which paths are real.
 
 ### Without Docker
 

@@ -93,6 +93,10 @@ try
 
     if (app.Environment.IsDevelopment())
     {
+        app.MapGet("/", () => Results.Redirect("/scalar/v1"))
+            .AllowAnonymous()
+            .ExcludeFromDescription();
+
         app.MapOpenApi().AllowAnonymous();
 
         // Development only. Published API documentation hands out the shape of every route and payload.
