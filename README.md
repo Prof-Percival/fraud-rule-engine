@@ -191,9 +191,36 @@ Services in the compose stack:
 | `tests` | none | Only starts under the `test` profile |
 | `pgadmin` | 5050 | Only starts under the `tools` profile. See below |
 
+### Using a PostgreSQL you already have
+
+By default the stack runs its own PostgreSQL in a container. That server is separate from any PostgreSQL
+installed on the machine, so its `fraudengine` database is listed under its own entry in a client rather
+than alongside databases in the local server. A database only ever appears under the server that holds
+it, so to see it among the ones already there, the service has to write into that server instead:
+
+```bash
+docker compose --profile host-db up -d --build api-host-db
+```
+
+That runs the API against a PostgreSQL on the host and does not start the `db` service at all. The
+database and its schema are created on first start if they are not there, so nothing needs preparing
+beyond an account that may create one. Settings come from `.env`:
+
+```
+HOST_POSTGRES_PORT=5432
+HOST_POSTGRES_DB=fraudengine
+HOST_POSTGRES_USER=postgres
+HOST_POSTGRES_PASSWORD=your-password
+```
+
+Two things to expect. The host server has to accept a connection from the container, which is a different
+address from `localhost`, so `pg_hba.conf` usually needs a line permitting the Docker network and a
+reload afterwards. And if the default stack is still running it already holds port 8080, so either stop
+it first or set `API_PORT` to something else.
+
 ### Looking at the data
 
-The database keeps its data in a named volume, so it is still there after a restart and after
+The container's database keeps its data in a named volume, so it is still there after a restart and after
 `docker compose down`. Two ways to inspect it.
 
 **pgAdmin in the stack**, which needs nothing installed:

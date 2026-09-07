@@ -54,6 +54,30 @@ services:
     profiles:
       - test
 
+  # The same API, pointed at a PostgreSQL already installed on this machine rather than at the db
+  # service. Its tables then land in the server already registered in a local pgAdmin, listed among the
+  # databases already there, because a database only ever appears under the server that holds it. The
+  # schema is created on first start, database included.
+  #
+  #   docker compose --profile host-db up -d --build api-host-db
+  #
+  # The host server has to accept a connection from the container, which usually means one pg_hba.conf
+  # line. Credentials come from .env; see .env.example.
+  api-host-db:
+    build:
+      context: .
+      target: final
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__Default: "Host=host.docker.internal;Port=${HOST_POSTGRES_PORT:-5432};Database=${HOST_POSTGRES_DB:-fraudengine};Username=${HOST_POSTGRES_USER:-postgres};Password=${HOST_POSTGRES_PASSWORD:-postgres}"
+      ApiKey__Keys__dev-local-key-0123456789: local-development
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "${API_PORT:-8080}:8080"
+    profiles:
+      - host-db
+
   # A browser based way to look at the stored data, for anyone who would rather not use psql. It reaches
   # the database over the compose network, so it works regardless of what is installed on the host and
   # regardless of which host port the database is published on.
