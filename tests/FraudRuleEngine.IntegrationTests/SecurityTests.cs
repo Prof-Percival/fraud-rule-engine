@@ -147,6 +147,51 @@ public sealed class SecurityTests(FraudEngineFixture fixture)
         unaffected.StatusCode.ShouldBe(HttpStatusCode.OK);
     }
 
+    [Fact]
+    public async Task Gives_each_client_the_allowance_it_was_configured_with()
+    {
+        const int Alpha = 2;
+        const int Bravo = 6;
+
+        await using var host = new FraudEngineHost(
+            fixture.ConnectionString,
+            requestsPerWindow: 1,
+            new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                [KeyAlpha] = "rate-limit-alpha",
+                [KeyBravo] = "rate-limit-bravo",
+            },
+            new Dictionary<string, int>(StringComparer.Ordinal)
+            {
+                ["rate-limit-alpha"] = Alpha,
+                ["rate-limit-bravo"] = Bravo,
+            });
+
+        // The default is one request, so neither client is running on it. Throttling a single caller has
+        // to be a property of that caller rather than something the whole service shares.
+        (await Allowed(host, KeyAlpha, attempts: Alpha + 2)).ShouldBe(Alpha);
+        (await Allowed(host, KeyBravo, attempts: Bravo)).ShouldBe(Bravo);
+    }
+
+    private static async Task<int> Allowed(FraudEngineHost host, string apiKey, int attempts)
+    {
+        using var client = host.ClientWithKey(apiKey);
+        var allowed = 0;
+
+        for (var attempt = 0; attempt < attempts; attempt++)
+        {
+            using var response = await client.GetAsync(
+                new Uri("/api/v1/rules", UriKind.Relative), TestContext.Current.CancellationToken);
+
+            if (response.StatusCode == HttpStatusCode.OK)
+            {
+                allowed++;
+            }
+        }
+
+        return allowed;
+    }
+
     private static HttpRequestMessage WithKey(string route, string apiKey)
     {
         var request = new HttpRequestMessage(HttpMethod.Get, new Uri(route, UriKind.Relative));

@@ -76,6 +76,43 @@ public sealed class ApiKeyOptionsValidatorTests
         (result.Failures?.Count() ?? 0).ShouldBeGreaterThanOrEqualTo(2);
     }
 
+    [Fact]
+    public void Accepts_a_client_given_an_allowance_of_its_own()
+    {
+        var options = Valid();
+        options.Clients["a-client"] = new ClientOptions { RequestsPerWindow = 25 };
+
+        _validator.Validate(null, options).Succeeded.ShouldBeTrue();
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public void Rejects_an_allowance_that_would_refuse_every_request(int allowance)
+    {
+        var options = Valid();
+        options.Clients["a-client"] = new ClientOptions { RequestsPerWindow = allowance };
+
+        var result = _validator.Validate(null, options);
+
+        result.Failed.ShouldBeTrue();
+        result.FailureMessage.ShouldContain("must be positive");
+    }
+
+    [Fact]
+    public void Rejects_an_allowance_for_a_client_no_key_maps_to()
+    {
+        // Left alone this reads as working configuration while the client stays on the default, which is
+        // the wrong number written down in a file nobody will read again.
+        var options = Valid();
+        options.Clients["a-clientt"] = new ClientOptions { RequestsPerWindow = 25 };
+
+        var result = _validator.Validate(null, options);
+
+        result.Failed.ShouldBeTrue();
+        result.FailureMessage.ShouldContain("no key maps to that client name");
+    }
+
     private static ApiKeyOptions Valid()
     {
         var options = new ApiKeyOptions();

@@ -54,12 +54,24 @@ internal static class SecurityRegistration
                 var keys = httpContext.RequestServices
                     .GetRequiredService<IOptionsMonitor<ApiKeyOptions>>().CurrentValue;
 
-                return RateLimitPartition.GetFixedWindowLimiter(client, _ => new FixedWindowRateLimiterOptions
-                {
-                    PermitLimit = keys.RequestsPerWindow,
-                    Window = keys.Window,
-                    QueueLimit = 0,
-                });
+                var allowance = keys.AllowanceFor(client);
+                var window = keys.Window;
+
+                // The numbers belong in the partition key, not only in the options handed to the factory.
+                // A partition's limiter is built once and reused for the life of the process, so a client
+                // already sending would otherwise keep the allowance it started with and a change to
+                // configuration would appear to do nothing.
+                var partition = string.Create(
+                    CultureInfo.InvariantCulture, $"{client}|{allowance}|{window}");
+
+                return RateLimitPartition.GetFixedWindowLimiter(
+                    partition,
+                    _ => new FixedWindowRateLimiterOptions
+                    {
+                        PermitLimit = allowance,
+                        Window = window,
+                        QueueLimit = 0,
+                    });
             });
 
             limiter.OnRejected = async (context, cancellationToken) =>

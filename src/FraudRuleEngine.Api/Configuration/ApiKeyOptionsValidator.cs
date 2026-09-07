@@ -49,6 +49,26 @@ internal sealed class ApiKeyOptionsValidator : IValidateOptions<ApiKeyOptions>
             }
         }
 
+        var named = new HashSet<string>(options.Keys.Values, StringComparer.Ordinal);
+
+        foreach (var (client, settings) in options.Clients)
+        {
+            if (settings.RequestsPerWindow is <= 0)
+            {
+                errors.Add(
+                    $"ApiKey:Clients:{client}:RequestsPerWindow must be positive, or that client could "
+                    + "make no request at all. Remove the entry to leave it on the default.");
+            }
+
+            // A name here that no key maps to is almost always a typo, and the effect of a typo is that
+            // the client silently keeps the default allowance rather than the one written down.
+            if (!named.Contains(client))
+            {
+                errors.Add(
+                    $"ApiKey:Clients:{client} has an allowance but no key maps to that client name.");
+            }
+        }
+
         return errors.Count == 0
             ? ValidateOptionsResult.Success
             : ValidateOptionsResult.Fail(errors);

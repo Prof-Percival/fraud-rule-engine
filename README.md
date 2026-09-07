@@ -550,9 +550,10 @@ ships. Health probes are unauthenticated, as are the OpenAPI document and its br
 reference, which exist in development only.
 
 A request without a key, or with one that is not configured, comes back as 401. Each client is
-rate limited separately, keyed on the client its API key belongs to, and exceeding the allowance
-returns 429 with a `Retry-After` header. Both are `application/problem+json`, the same shape as
-every other error.
+rate limited separately, keyed on the client its API key belongs to and on an allowance that can be
+set for that client alone, and exceeding it returns 429 with a `Retry-After` header. Both are
+`application/problem+json`, the same shape as every other error. See Configuration for how the
+allowances are set and changed.
 
 There is a `docs/requests.http` file covering every endpoint with realistic payloads. It
 runs directly in Visual Studio, Rider and the VS Code REST Client extension, which is the
@@ -630,9 +631,69 @@ message naming the setting rather than running with a rule quietly disabled. Eve
 stamped with the version label plus a fingerprint of the values actually in force, so a stored
 assessment can be traced back to the numbers that produced it.
 
-`ApiKey` holds the accepted keys, each mapped to a client name, and the rate limit allowance and
-window. It is validated the same way: no keys, a key shorter than sixteen characters, or a key with
-no client name fails the boot.
+`ApiKey` holds the accepted keys, each mapped to a client name, the window, a default allowance, and an
+allowance per client where one client should not be treated like the rest:
+
+```json
+"ApiKey": {
+  "Window": "00:01:00",
+  "RequestsPerWindow": 6000,
+  "Keys": {
+    "a-long-key-for-partner-a": "partner-a",
+    "a-long-key-for-the-loader": "bulk-loader"
+  },
+  "Clients": {
+    "partner-a": { "RequestsPerWindow": 1200 },
+    "bulk-loader": { "RequestsPerWindow": 60000 }
+  }
+}
+```
+
+A client with no entry under `Clients` runs on `RequestsPerWindow`. Throttling one noisy caller is a
+matter of lowering its number, and lifting a limit for one integration raises only theirs.
+
+The allowance is resolved by **client**, not by key, which matters during a rotation: a client holding
+two valid keys at once shares one allowance rather than being handed twice the rate for as long as the
+rotation lasts.
+
+Validated the same way as the rest. No keys, a key shorter than sixteen characters, a key with no client
+name, an allowance that is not positive, or an allowance naming a client no key maps to all fail the
+boot. That last one exists because a typo would otherwise read as working configuration while the client
+quietly stayed on the default.
+
+The default of 6,000 a minute is derived rather than chosen: a single instance measured about 190
+evaluations per second, so roughly half of one instance's capacity is 100 per second. It is per instance,
+which is a stated limit further down.
+
+**Changing an allowance while the service runs.** The limiter reads its numbers through
+`IOptionsMonitor`, and the effective allowance forms part of the rate limiting partition key, so a
+changed value applies to a caller already sending rather than only to one that turns up later. It also
+means a client mid way through being throttled gets a fresh allowance the moment its number changes,
+which is the quickest way to release one during development.
+
+That only works for configuration sources that support reloading. A JSON file does, including a
+Kubernetes ConfigMap or Secret mounted as a file, since the platform updates the file in place.
+**Environment variables are read once at startup and cannot change**, so a deployment that wants to
+retune a client without a restart has to supply that section as a mounted file rather than as
+`ApiKey__Clients__...`.
+
+The development keys are in `appsettings.Development.json`, deliberately spanning a range of allowances
+so throttling can be exercised without editing anything:
+
+| Key | Client | Allowance per minute |
+|---|---|---|
+| `dev-local-key-0123456789` | `local-development` | 20,000 |
+| `dev-bulk-loader-key-0001` | `bulk-loader` | 60,000 |
+| `dev-partner-a-key-000001` | `partner-a` | 1,200 |
+| `dev-partner-b-key-000001` | `partner-b` | 1,200 |
+| `dev-analyst-tool-key-001` | `analyst-tool` | 300 |
+| `dev-throttled-key-000001` | `throttled-client` | 20 |
+| `dev-tight-key-0000000001` | `tight-client` | 3 |
+| `dev-default-key-00000001` | `on-the-default` | whatever the default is |
+
+Use the bulk loader key for importing, the tight one to see a 429 on demand, and the last one to check
+what an unlisted client gets. Since the limiter holds its counters in memory, `docker compose restart
+api` clears every one of them.
 
 ### Where settings come from
 

@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using System.Globalization;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
@@ -16,7 +17,8 @@ namespace FraudRuleEngine.IntegrationTests;
 internal sealed class FraudEngineHost(
     string connectionString,
     int requestsPerWindow,
-    IReadOnlyDictionary<string, string> keys) : WebApplicationFactory<Program>
+    IReadOnlyDictionary<string, string> keys,
+    IReadOnlyDictionary<string, int>? allowances = null) : WebApplicationFactory<Program>
 {
     public HttpClient ClientWithKey(string apiKey)
     {
@@ -43,6 +45,12 @@ internal sealed class FraudEngineHost(
         foreach (var (key, client) in keys)
         {
             settings[$"ApiKey:Keys:{key}"] = client;
+        }
+
+        foreach (var (client, allowance) in allowances ?? ReadOnlyDictionary<string, int>.Empty)
+        {
+            settings[$"ApiKey:Clients:{client}:RequestsPerWindow"] =
+                allowance.ToString(CultureInfo.InvariantCulture);
         }
 
         builder.ConfigureHostConfiguration(configuration =>
