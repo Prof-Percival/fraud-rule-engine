@@ -7,8 +7,10 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-fraudengine}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-fraudengine}
       POSTGRES_DB: ${POSTGRES_DB:-fraudengine}
+    # The host port is overridable because 5432 is often already taken by a PostgreSQL installed on the
+    # machine. Set POSTGRES_PORT to something free and connect a client to that instead.
     ports:
-      - "5432:5432"
+      - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     # The api waits on this rather than on the container merely existing, because Postgres accepts
@@ -52,5 +54,30 @@ services:
     profiles:
       - test
 
+  # A browser based way to look at the stored data, for anyone who would rather not use psql. It reaches
+  # the database over the compose network, so it works regardless of what is installed on the host and
+  # regardless of which host port the database is published on.
+  pgadmin:
+    image: dpage/pgadmin4:9.17
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-admin@fraudengine.dev}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-fraudengine}
+      # No login screen and no master password, because this is a local inspection tool and a
+      # credential prompt in front of a throwaway database is friction with nothing behind it.
+      PGADMIN_CONFIG_SERVER_MODE: "False"
+      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: "False"
+    ports:
+      - "${PGADMIN_PORT:-5050}:80"
+    volumes:
+      # The connection arrives already registered, so there is nothing to fill in but the password.
+      - ./docs/pgadmin-servers.json:/pgadmin4/servers.json:ro
+      - pgadmin:/var/lib/pgadmin
+    profiles:
+      - tools
+
 volumes:
   pgdata:
+  pgadmin:

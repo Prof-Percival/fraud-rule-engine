@@ -1,0 +1,14 @@
+{
+  "Servers": {
+    "1": {
+      "Name": "Fraud rule engine",
+      "Group": "Servers",
+      "Host": "db",
+      "Port": 5432,
+      "MaintenanceDB": "fraudengine",
+      "Username": "fraudengine",
+      "SSLMode": "prefer",
+      "Comment": "Reached over the compose network, so the host port does not matter."
+    }
+  }
+}

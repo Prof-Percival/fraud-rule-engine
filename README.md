@@ -35,11 +35,14 @@ Run the full test suite, again with nothing installed but Docker:
 docker compose --profile test run --rm tests
 ```
 
-Stop everything and discard the database volume:
+Stop it again, keeping the data:
 
 ```bash
-docker compose down -v
+docker compose stop
 ```
+
+Start it back up with `docker compose up -d`. That creates whatever is missing and starts whatever
+already exists, so it is safe to run repeatedly. Nothing above deletes the database.
 
 Identical commands work in PowerShell on Windows, Terminal on macOS and a Linux shell.
 
@@ -157,16 +160,81 @@ source only change does not invalidate the restore layer.
 docker compose up --build          # foreground, logs to console
 docker compose up -d --build       # background
 docker compose logs -f api         # follow the API logs
-docker compose down -v             # stop and drop the database volume
 ```
+
+Starting and stopping, and what each one does to the data:
+
+| Command | Effect | Data |
+|---|---|---|
+| `docker compose up -d` | Creates anything missing, starts anything already there. Safe to repeat | kept |
+| `docker compose stop` | Stops the containers, leaves them in place | kept |
+| `docker compose start` | Starts the containers stopped above | kept |
+| `docker compose restart` | Stop then start | kept |
+| `docker compose down` | Stops and removes the containers, leaves the volume | kept |
+| `docker compose down -v` | Removes the containers **and the volume** | **destroyed** |
+
+`docker compose stop` then `docker compose up -d` is the routine cycle. `down -v` is the only command
+here that loses data, and it is the one to use when you want a genuinely empty database to start again
+from.
 
 Services in the compose stack:
 
 | Service | Port | Notes |
 |---|---|---|
 | `api` | 8080 | Waits for the database healthcheck before starting |
-| `db` | 5432 | PostgreSQL 17, data in a named volume |
+| `db` | 5432, overridable | PostgreSQL 17, data in a named volume that survives a restart |
 | `tests` | none | Only starts under the `test` profile |
+| `pgadmin` | 5050 | Only starts under the `tools` profile. See below |
+
+### Looking at the data
+
+The database keeps its data in a named volume, so it is still there after a restart and after
+`docker compose down`. Two ways to inspect it.
+
+**pgAdmin in the stack**, which needs nothing installed:
+
+```bash
+docker compose --profile tools up -d pgadmin
+```
+
+Open <http://localhost:5050>. The server is already registered as "Fraud rule engine"; expand it and
+enter the password `fraudengine` when asked. The tables are under
+`Databases > fraudengine > Schemas > public > Tables`.
+
+This connects over the compose network rather than through the host, so it works whatever else is
+installed on the machine.
+
+**A pgAdmin or client installed on your machine**, connecting to the published port:
+
+| Setting | Value |
+|---|---|
+| Host | `localhost` |
+| Port | `5432` |
+| Database | `fraudengine` |
+| Username | `fraudengine` |
+| Password | `fraudengine` |
+
+If a client connects but shows no `fraudengine` database, it is almost certainly talking to a different
+PostgreSQL. A server installed on the machine already holds port 5432, and a client pointed at
+`localhost:5432` reaches that one instead of the container. Check with:
+
+```bash
+docker compose ps db          # is the container up, and on which host port
+```
+
+To move the container off the contested port, put `POSTGRES_PORT=55432` in a `.env` file next to
+`compose.yaml`, run `docker compose up -d`, and connect the client to `55432`. Nothing inside the stack
+changes, because the API reaches the database by service name on the compose network rather than through
+the host. Changing the port does recreate the database container, so readiness reports 503 for a few
+seconds while the connection is re established, then returns to 200 on its own. The data is in the
+volume and is not affected.
+
+To reach it from `psql` without installing anything:
+
+```bash
+docker compose exec db psql -U fraudengine -d fraudengine -c "\dt"
+docker compose exec db psql -U fraudengine -d fraudengine -c "select decision, count(*) from fraud_assessments group by decision;"
+```
 
 Migrations are applied automatically on startup outside production. In production they run
 as a separate step, because an application that migrates its own schema on boot will fight
